@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import Logo from "/public/logo.PNG";
+import Logo from "../../asset/logo.PNG";
 import {
   FaHome,
   FaLayerGroup,
