@@ -201,7 +201,7 @@ export default function Courses() {
             <span>Course Code</span>
             <span className="ml-10">Units</span>
             <span className="ml-10">Grade</span>
-            <span className="ml-10">Actions</span>
+            <span className="ml-5">Actions</span>
           </div>
 
           {courses.map((c) => (
