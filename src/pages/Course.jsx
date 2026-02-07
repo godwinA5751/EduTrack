@@ -198,10 +198,10 @@ export default function Courses() {
         {/* Courses */}
         <div className="space-y-2">
           <div className="grid grid-cols-4 items-center bg-white/20 p-3 rounded-xl text-white font-semibold">
-            <span>Course Code</span>
-            <span className="ml-10">Units</span>
-            <span className="ml-10">Grade</span>
-            <span className="ml-5">Actions</span>
+            <span>Courses</span>
+            <span className="text-center">Units</span>
+            <span className="text-center">Grade</span>
+            <span className="text-center">Actions</span>
           </div>
 
           {courses.map((c) => (
@@ -209,7 +209,7 @@ export default function Courses() {
               <span>{c.code}</span>
               <span className="text-center">{c.unit}</span>
               <span className="text-center">{c.grade}</span>
-              <FaTrash onClick={() => deleteCourse(c.id)} className="cursor-pointer hover:text-red-400 transition" />
+              <FaTrash onClick={() => deleteCourse(c.id)} className="cursor-pointer text-center hover:text-red-400 transition" />
             </div>
           ))}
 
