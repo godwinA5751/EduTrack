@@ -13,12 +13,12 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="#/register" element={<Register />} />
+      <Route path="#/login" element={<Login />} />
 
       {/* 🔐 Protected Routes */}
       <Route
-        path="/dashboard"
+        path="#/dashboard"
         element={
           <ProtectedRoute>
             <DashBoard />
@@ -27,7 +27,7 @@ function App() {
       />
 
       <Route
-        path="/levels"
+        path="#/levels"
         element={
           <ProtectedRoute>
             <Levels />
@@ -36,7 +36,7 @@ function App() {
       />
 
       <Route
-        path="/semester"
+        path="#/semester"
         element={
           <ProtectedRoute>
             <Semester />
@@ -45,7 +45,7 @@ function App() {
       />
 
       <Route
-        path="/courses"
+        path="#/courses"
         element={
           <ProtectedRoute>
             <Course />
@@ -54,7 +54,7 @@ function App() {
       />
 
       <Route
-        path="/profile"
+        path="#/profile"
         element={
           <ProtectedRoute>
             <Profile />
