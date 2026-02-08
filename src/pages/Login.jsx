@@ -27,6 +27,7 @@ export default function Login() {
 
     if (!form.matricNo || !form.password) {
       setMessage({ text: "Please fill all fields", type: "error" });
+      setTimeout(() => setMessage({ text: "", type: "" }), 2000);
       return;
     }
 

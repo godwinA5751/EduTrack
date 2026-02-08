@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import Semester from "./pages/Semester";
 import Course from "./pages/Course";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ChangePassword from "./pages/ChangePassword";
 
 function App() {
   return (
@@ -58,6 +59,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
           </ProtectedRoute>
         }
       />

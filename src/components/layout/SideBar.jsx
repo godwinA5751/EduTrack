@@ -6,6 +6,7 @@ import {
   FaLayerGroup,
   FaUser,
   FaTimes,
+  FaLock
 } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -23,6 +24,7 @@ export default function Sidebar({ icon, name }) {
     { name: "Dashboard", icon: <FaHome />, href: "/dashboard" },
     { name: "Levels", icon: <FaLayerGroup />, href: "/levels" },
     { name: "Profile", icon: <FaUser />, href: "/profile" },
+    { name: "Change Password", icon: <FaLock />, href: "/change-password" },
     {
       name: "Logout",
       icon: <FaTimes />,
@@ -60,7 +62,7 @@ export default function Sidebar({ icon, name }) {
         {/* Logo */}
         <div className="mb-8 flex items-center gap-2 justify-end">
           <img src={Logo} alt="EduTrack Logo" className="w-8 h-8 py-1" />
-          <h1 className="text-2xl font-bold text-white">EduTrack</h1>        
+          <h1 className="text-2xl font-bold text-white">EduTrack</h1>
         </div>
 
         {/* Menu */}
