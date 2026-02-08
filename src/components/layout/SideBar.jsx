@@ -26,10 +26,10 @@ export default function Sidebar({ icon, name }) {
     {
       name: "Logout",
       icon: <FaTimes />,
-      href: "/",
+      href: "/login",
       action: async () => {
         await supabase.auth.signOut();
-        window.location.href = "/";
+        window.location.href = "/login";
       },
 
     },
