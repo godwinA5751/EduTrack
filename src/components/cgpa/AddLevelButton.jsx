@@ -3,34 +3,35 @@ import { supabase } from "../../lib/supabaseClient";
 
 const AddLevelButton = ({ levels, setLevels, userId }) => {
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
-  const addLevel = async () => {
-    // 🔒 Prevent adding new level if last CGPA is not calculated
-    if (levels.length > 0) {
-      const lastLevel = levels[levels.length - 1];
-      if (lastLevel.cgpa === 0) {
-        setMessage({
-          text: `You must calculate CGPA for ${lastLevel.level} Level before adding a new level.`,
-          type: "error",
-        });
-        setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-        return;
-      }
-    }
+  const showTempMessage = (text, type = "success") => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: "", type: "" }), 2500);
+  };
 
-    // Determine next level
-    const nextLevel =
-      levels.length === 0
-        ? 100
-        : Number(levels[levels.length - 1].level) + 100;
+  const createLevel = async (levelValue) => {
+    if (isAdding) return;
+    setIsAdding(true);
+    setShowPrompt(false);
+
+    // 🚀 Optimistic UI (instant)
+    const optimisticLevel = {
+      id: crypto.randomUUID(),
+      level: levelValue,
+      cgpa: 0,
+      optimistic: true,
+    };
+
+    setLevels((prev) => [...prev, optimisticLevel]);
 
     try {
-      // 1️⃣ Insert new level
-      const { data: newLevel, error } = await supabase
+      const { data: realLevel, error } = await supabase
         .from("levels")
         .insert({
           user_id: userId,
-          level: nextLevel,
+          level: levelValue,
           cgpa: 0,
         })
         .select()
@@ -38,31 +39,55 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
 
       if (error) throw error;
 
-      // ✅ 2️⃣ UPDATE profile.currentLevel (NEW)
-      const { error: profileError } = await supabase
+      // 🔁 Replace optimistic level with real one
+      setLevels((prev) =>
+        prev.map((lvl) => (lvl.id === optimisticLevel.id ? realLevel : lvl))
+      );
+
+      // 🧠 Background update (non-blocking)
+      supabase
         .from("profiles")
-        .update({ current_level: nextLevel })
+        .update({ current_level: levelValue })
         .eq("id", userId);
 
-      if (profileError) throw profileError;
-
-      // 3️⃣ Update React state
-      setLevels([...levels, newLevel]);
-
-      setMessage({
-        text: `Level ${nextLevel} added successfully!`,
-        type: "success",
-      });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+      showTempMessage(`Level ${levelValue} added successfully!`);
     } catch (err) {
       console.error(err);
-      setMessage({ text: "Failed to add level", type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+
+      // ❌ Rollback optimistic update
+      setLevels((prev) =>
+        prev.filter((lvl) => lvl.id !== optimisticLevel.id)
+      );
+
+      showTempMessage("Failed to add level", "error");
+    } finally {
+      setIsAdding(false);
     }
+  };
+
+  const addLevel = () => {
+    // 🆕 First-time user
+    if (levels.length === 0) {
+      setShowPrompt(true);
+      return;
+    }
+
+    const lastLevel = levels[levels.length - 1];
+
+    if (lastLevel.cgpa === 0) {
+      showTempMessage(
+        `You must calculate CGPA for ${lastLevel.level} Level first.`,
+        "error"
+      );
+      return;
+    }
+
+    createLevel(Number(lastLevel.level) + 100);
   };
 
   return (
     <div>
+      {/* Message */}
       {message.text && (
         <div
           className={`text-center py-4 font-semibold text-sm ${
@@ -72,11 +97,47 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
           {message.text}
         </div>
       )}
+
+      {/* Direct Entry Prompt */}
+      {showPrompt && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 w-[90%] max-w-sm text-center">
+            <h2 className="font-bold text-lg mb-4 text-gray-700">
+              Are you a Direct Entry student?
+            </h2>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => createLevel(200)}
+                className="cursor-pointer px-6 py-2 rounded-xl bg-[#199FB1] text-white font-semibold"
+              >
+                Yes
+              </button>
+
+              <button
+                onClick={() => createLevel(100)}
+                className="cursor-pointer px-6 py-2 rounded-xl bg-gray-200 font-semibold"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Level Button */}
       <button
-        className="w-full flex items-center justify-center rounded-3xl border-2 border-dashed border-gray-300 h-50 cursor-pointer hover:bg-gray-50 transition text-gray-400 font-semibold"
+        disabled={isAdding}
         onClick={addLevel}
+        className={`w-full flex items-center justify-center rounded-3xl border-2 border-dashed h-50 font-semibold transition
+          ${
+            isAdding
+              ? "cursor-not-allowed text-gray-500 border-gray-200"
+              : "cursor-pointer text-gray-500 border-gray-300 hover:bg-gray-50"
+          }
+        `}
       >
-        Add Level
+        {isAdding ? "Adding..." : "Add Level"}
       </button>
     </div>
   );
