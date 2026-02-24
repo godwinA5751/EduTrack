@@ -3,7 +3,10 @@ import Skeleton from "./Skeleton";
 
 export default function ProfileSkeleton() {
   return (
-    <div className="bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] min-h-screen overflow-hidden px-6 pt-6">
+    <div className="
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden px-6 pt-6">
       {/* Header skeleton */}
       <Skeleton className="w-1/4 h-10 mb-6 rounded-3xl" />
 

@@ -40,7 +40,10 @@ export default function Header({ title, subtitle }) {
   const initial = user.full_name?.charAt(0) || "?";
 
   return (
-    <header className="fixed top-8 left-6 right-6 z-50 rounded-3xl bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] p-6 shadow-lg">
+    <header className="fixed top-8 left-6 right-6 z-50 rounded-3xl 
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] p-6 shadow-lg">
       <div className="flex items-center justify-between">
         {/* Left */}
         <div>

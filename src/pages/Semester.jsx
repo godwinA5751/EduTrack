@@ -101,8 +101,11 @@ export default function Semester() {
   if (loading) return <SemesterSkeleton />;
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]">
-      <div className="fixed top-6 left-4 flex items-center gap-3 bg-white/20 backdrop-blur-md px-4 py-2 rounded-3xl z-50">
+    <div className="min-h-screen p-8 
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
+      <div className="fixed top-6 left-4 flex items-center gap-3 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl z-50">
         <button onClick={() => navigate("/levels")}>
           <FaArrowLeft className="text-white hover:scale-110 transition-transform  duration-300 ease-out hover:translate-x-[-10px] cursor-pointer" />
         </button>
@@ -124,14 +127,14 @@ export default function Semester() {
                 },
               })
             }
-            className="cursor-pointer hover:scale-105 transition bg-white/30 backdrop-blur-md rounded-3xl p-6"
+            className="cursor-pointer hover:scale-105 transition bg-white/30 dark:bg-white/10 backdrop-blur-md rounded-3xl p-6"
           />
         ))}
 
         {semesters.length < 3 && (
           <div
             onClick={addSemester}
-            className="flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 text-white cursor-pointer hover:bg-white/10 transition"
+            className="flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 dark:border-white/10 text-white cursor-pointer hover:bg-white/10 dark:hover:bg-white/10 transition"
           >
             + Add Semester
           </div>

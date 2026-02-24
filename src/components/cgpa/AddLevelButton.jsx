@@ -129,11 +129,11 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
       <button
         disabled={isAdding}
         onClick={addLevel}
-        className={`w-full flex items-center justify-center rounded-3xl border-2 border-dashed h-50 font-semibold transition
+        className={`w-full flex items-center justify-center rounded-3xl border-2 dark:border-gray-700 border-dashed h-50 font-semibold transition
           ${
             isAdding
-              ? "cursor-not-allowed text-gray-500 border-gray-200"
-              : "cursor-pointer text-gray-500 border-gray-300 hover:bg-gray-50"
+              ? "cursor-not-allowed text-gray-500 border-gray-200 dark:border-gray-800"
+              : "cursor-pointer text-gray-500 border-gray-300 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
           }
         `}
       >

@@ -61,7 +61,12 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="overflow-hidden min-h-screen p-8 bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]">
+    <div className="
+        overflow-hidden min-h-screen p-8 
+        bg-gradient-to-br 
+        from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+        dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]"
+      >
       <Header title="Change Password" subtitle="Update your account password" />
       <form
         onSubmit={handleSubmit}

@@ -88,7 +88,10 @@ export default function Register() {
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}$/;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] px-4">
+    <div className="min-h-screen flex items-center justify-center 
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] px-4">
       <form
         onSubmit={handleSubmit}
         className="bg-white/20 backdrop-blur-md rounded-3xl p-10 max-w-md w-full shadow-lg flex flex-col gap-6"

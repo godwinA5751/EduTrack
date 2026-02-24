@@ -47,7 +47,10 @@ export default function Levels() {
   if (loading) return <LevelsSkeleton />;
 
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] overflow-hidden">
+    <div className="min-h-screen p-8 
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] overflow-hidden">
       <Header title="Levels" subtitle="Your academic levels overview" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-[144px] px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">

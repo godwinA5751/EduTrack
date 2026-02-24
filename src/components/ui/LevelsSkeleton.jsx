@@ -3,7 +3,10 @@ import Skeleton from "./Skeleton";
 
 export default function LevelsSkeleton() {
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] overflow-hidden">
+    <div className="min-h-screen p-8 
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] overflow-hidden">
       {/* Header skeleton */}
       <Skeleton className="w-1/3 h-10 mb-6 rounded-3xl" />
 

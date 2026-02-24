@@ -111,7 +111,10 @@ export default function Profile() {
       : "Nil";
 
   return (
-    <div className="bg-gradient-to-br from-[#A5D1E1] via-[#199FB1] to-[#0D5C75] min-h-screen overflow-hidden">
+    <div className="
+  bg-gradient-to-br 
+  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden">
       <Header title="Profile" subtitle="Your academic summary" />
 
       <div className="px-6 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide scroll-smooth">
