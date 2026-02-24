@@ -40,9 +40,9 @@ export default function CGPAProgress({ cgpa = 0 }) {
         <path
           d="M 28 100 A 72 72 0 0 1 172 100"
           fill="none"
-          stroke="#e5e7eb"
           strokeWidth="16"
           strokeLinecap="round"
+          className="stroke-[#e5e7eb] dark:stroke-[#1f2937]"
         />
 
         {/* Progress Arc with Gradient + Glow */}

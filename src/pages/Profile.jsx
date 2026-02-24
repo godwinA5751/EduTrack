@@ -121,7 +121,7 @@ export default function Profile() {
         <div className="max-w-3xl mx-auto mt-50 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark: bg-[#0B1F2A]/50 flex items-center justify-center text-3xl font-bold text-white">
+            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark: bg-[#0B1F2A] flex items-center justify-center text-3xl font-bold text-white">
               {initial}
             </div>
             <div>
