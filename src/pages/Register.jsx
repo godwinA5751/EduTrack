@@ -94,7 +94,7 @@ export default function Register() {
   dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white/20 backdrop-blur-md rounded-3xl p-10 max-w-md w-full shadow-lg flex flex-col gap-6"
+        className="bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-10 max-w-md w-full shadow-lg flex flex-col gap-6"
       >
         <h2 className="text-3xl font-bold text-white text-center">Register</h2>
 
@@ -104,7 +104,7 @@ export default function Register() {
           placeholder="Full Name"
           value={form.fullName}
           onChange={handleChange}
-          className="w-full p-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
+          className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
         />
 
         <input
@@ -113,7 +113,7 @@ export default function Register() {
           placeholder="Matric Number"
           value={form.matricNo}
           onChange={handleChange}
-          className="w-full p-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
+          className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
         />
 
         <input
@@ -123,7 +123,7 @@ export default function Register() {
           placeholder="Current Level (e.g., 100, 200)"
           value={form.level}
           onChange={handleChange}
-          className="w-full p-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
+          className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
         />
 
         <div className="relative">
@@ -133,7 +133,7 @@ export default function Register() {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
-            className="w-full p-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
+            className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
           />
           <span
             className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-white/70"
@@ -151,7 +151,7 @@ export default function Register() {
 
         <Button
           type="submit"
-          className="w-full bg-white/30 hover:bg-white/50 text-white font-semibold px-6 py-3 rounded-2xl transition-all"
+          className="w-full bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl transition-all"
         >
           Register
         </Button>
