@@ -118,10 +118,10 @@ export default function Profile() {
       <Header title="Profile" subtitle="Your academic summary" />
 
       <div className="px-6 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide scroll-smooth">
-        <div className="max-w-3xl mx-auto mt-50 bg-white/20 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
+        <div className="max-w-3xl mx-auto mt-50 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 flex items-center justify-center text-3xl font-bold text-white">
+            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark: bg-[#0B1F2A]/50 flex items-center justify-center text-3xl font-bold text-white">
               {initial}
             </div>
             <div>

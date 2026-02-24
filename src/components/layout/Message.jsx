@@ -25,7 +25,7 @@ export default function Message() {
 
   return (
     <div className="h-[160px] lg:w-xl lg:mt-20">
-      <div className="max-w-full lg:max-w-xl mx-auto p-3 bg-white/20 backdrop-blur-md rounded-xl text-white/80 shadow-lg font-semibold transition-all duration-500">
+      <div className="max-w-full lg:max-w-xl mx-auto p-3 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-xl text-white/80 shadow-lg font-semibold transition-all duration-500">
         {messages[messageIndex]}
       </div>
     </div>
