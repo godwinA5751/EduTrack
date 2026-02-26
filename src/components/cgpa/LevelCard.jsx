@@ -1,5 +1,5 @@
 
-export default function LevelCard({ level, cgpa, onClick}) {
+export default function LevelCard({ level, cgpa, onClick, point, unit }) {
 
   return (
     <div className="rounded-3xl bg-white dark:bg-gray-800 shadow-md p-6 hover:shadow-lg transition h-50">
@@ -22,10 +22,20 @@ export default function LevelCard({ level, cgpa, onClick}) {
         </span>
       </div>
 
+      <div className="flex items-center justify-between gap-3 mt-2 px-3">
+        <p>
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-bold">Units: </span>
+          <span className="text-xs text-gray-700 dark:text-gray-300 font-bold text-[1rem]">{unit}</span></p>
+        <p>
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-bold">Points: </span>
+          <span className="text-xs text-gray-700 dark:text-gray-300 font-bold text-[1rem]">{point}</span></p>
+      </div>
+
       <button
         onClick={onClick}
-        className="mt-10 w-full py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
-  dark:bg-[#0F3A47]/40 dark:text-[#7FD6E3] font-medium hover:bg-[#A7EBF2]/60 dark:hover:bg-[#0F3A47]/60 transition cursor-pointer"
+        className="
+          mt-2 w-full py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
+          dark:bg-[#0F3A47]/40 dark:text-[#7FD6E3] font-medium hover:bg-[#A7EBF2]/60 dark:hover:bg-[#0F3A47]/60 transition cursor-pointer"
       >
         {cgpa === 0.0 ? "Get Started →" : "View Semesters →"}
       </button>

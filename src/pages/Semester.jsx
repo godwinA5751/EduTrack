@@ -14,6 +14,7 @@ export default function Semester() {
   const [semesters, setSemesters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
 
   /* ───────── Guard ───────── */
 
@@ -65,6 +66,9 @@ export default function Semester() {
   /* ───────── Add Semester ───────── */
 
   const addSemester = async () => {
+    if (isAdding) return;
+    setIsAdding(true);
+    setMessage("");
     const lastSemester = semesters.at(-1);
 
     if (lastSemester && lastSemester.total_units === 0) {
@@ -134,7 +138,11 @@ export default function Semester() {
         {semesters.length < 3 && (
           <div
             onClick={addSemester}
-            className="flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 dark:border-white/10 text-white cursor-pointer hover:bg-white/10 dark:hover:bg-white/10 transition"
+            disabled={isAdding}
+            className={`
+              flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 dark:border-white/10 text-white cursor-pointer hover:bg-white/10 dark:hover:bg-white/10 transition
+              ${isAdding ? 'cursor-not-allowed text-gray-500 border-gray-200 dark:border-gray-800' : 'hover:border-white/80'}
+            `}
           >
             + Add Semester
           </div>
