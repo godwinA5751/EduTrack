@@ -64,12 +64,24 @@ export default function Courses() {
   const addCourse = async () => {
     if (!form.code || !form.unit || !form.grade) {
       setMessage("Fill all fields");
+      setTimeout(() => setMessage(""), 2500);
       return;
+    }
+
+    const pattern = /^[A-Z]{3}\s?\d{3}$/i;
+    if (!pattern.test(form.code)) {
+      setMessage("Invalid course code");
+      setTimeout(() => setMessage(""), 2500);
+      return;
+    }
+
+    function normalizeCode(code) {
+      return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
     }
 
     const newCourse = {
       semester_id: semesterId,
-      code: form.code.toUpperCase(),
+      code: normalizeCode(form.code),
       unit: Number(form.unit),
       grade: form.grade,
       point: GRADE_POINTS[form.grade],
@@ -87,6 +99,7 @@ export default function Courses() {
       setMessage("");
     } else {
       setMessage("Failed to add course");
+      setTimeout(() => setMessage(""), 2500);
     }
   };
 
@@ -108,6 +121,7 @@ export default function Courses() {
   const calculateAndPersistGPA = async () => {
     if (!courses.length) {
       setMessage("Add courses first");
+      setTimeout(() => setMessage(""), 2500);
       return;
     }
 
@@ -158,6 +172,7 @@ export default function Courses() {
       setMessage(`GPA saved: ${gpa.toFixed(2)}`);
     } catch {
       setMessage("Failed to calculate GPA");
+      setTimeout(() => setMessage(""), 2500);
     }
   };
 
@@ -165,9 +180,9 @@ export default function Courses() {
 
   return (
     <div className="min-h-screen p-8 
-  bg-gradient-to-br 
-  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
-  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
+      bg-gradient-to-br 
+      from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+      dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
       {/* Header */}
       <div className="flex items-center gap-3 fixed top-6 left-4 z-50 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl">
         <button onClick={() => navigate("/semester", { state: { level } })}>
@@ -183,7 +198,7 @@ export default function Courses() {
       <div className="grid lg:grid-cols-2 gap-6 mt-24">
         <div className="bg-white/20 dark:bg-white/5 p-6 rounded-xl space-y-3 text-center">
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <input name="code" value={form.code} onChange={handleChange} placeholder="Course Code" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
+            <input name="code" value={form.code} onChange={handleChange} placeholder="Course (e.g MTH101)" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
             <input name="unit" type="number" value={form.unit} onChange={handleChange} placeholder="Unit" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
             <select name="grade" value={form.grade} onChange={handleChange} className="input bg-white/30 dark:bg-white/10 text-white rounded-xl px-4 py-1 w-60 sm:w-40">
               <option value="" disabled>Grade</option>
