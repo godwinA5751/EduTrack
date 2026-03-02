@@ -37,6 +37,7 @@ export default function Profile() {
                 id,
                 semester,
                 courses (
+                  code,
                   unit,
                   point
                 )
@@ -60,22 +61,65 @@ export default function Profile() {
     fetchProfileAndAcademics();
   }, [navigate]);
 
+  // ✅ Use carryover-aware calculation for stats
   const stats = useMemo(() => {
-    let totalLevels = academic.length;
-    let totalSemesters = 0;
-    let totalUnits = 0;
-    let totalPoints = 0;
+    const normalize = (code) => code?.toUpperCase().replace(/\s+/g, "") || "";
 
+    // 1️⃣ Flatten all courses with level & semester info
+    const allCourses = [];
     academic.forEach((lvl) => {
       lvl.semesters?.forEach((sem) => {
-        totalSemesters += 1;
         sem.courses?.forEach((course) => {
-          const unit = course.unit || 0;
-          const point = course.point || 0;
-          totalUnits += unit;
-          totalPoints += unit * point;
+          allCourses.push({
+            ...course,
+            levelId: lvl.id,
+            semesterId: sem.id,
+          });
         });
       });
+    });
+
+    // 2️⃣ Group by normalized course code
+    const grouped = {};
+    allCourses.forEach((c) => {
+      const code = normalize(c.code);
+      if (!grouped[code]) grouped[code] = [];
+      grouped[code].push(c);
+    });
+
+    // 3️⃣ Resolve best attempt for each course (carryover logic)
+    const resolved = [];
+    Object.values(grouped).forEach((attempts) => {
+      // Sort by point descending
+      attempts.sort((a, b) => (b.point || 0) - (a.point || 0));
+      const best = attempts[0];
+
+      // Keep unit from the first attempt (original semester)
+      const original = attempts.reduce((a, b) =>
+        a.semesterId < b.semesterId ? a : b
+      );
+
+      resolved.push({
+        ...original,
+        point: best.point || 0, // replace old F with passed grade
+      });
+    });
+
+    // 4️⃣ Sum totals
+    let totalUnits = 0;
+    let totalPoints = 0;
+    resolved.forEach((c) => {
+      const unit = c.unit || 0;
+      const point = c.point || 0;
+      totalUnits += unit;
+      totalPoints += unit * point;
+    });
+
+    // 5️⃣ Levels & Semesters count
+    const totalLevels = academic.length;
+    let totalSemesters = 0;
+    academic.forEach((lvl) => {
+      totalSemesters += lvl.semesters?.length || 0;
     });
 
     const cumulativeCGPA = totalUnits ? totalPoints / totalUnits : 0;
@@ -89,8 +133,7 @@ export default function Profile() {
     };
   }, [academic]);
 
-  if (loading)  return <ProfileSkeleton />;
-
+  if (loading) return <ProfileSkeleton />;
   if (!profile) return null;
 
   const initial = profile.full_name?.charAt(0) || "?";
@@ -99,29 +142,29 @@ export default function Profile() {
     stats.cgpa < 1
       ? "Fail"
       : stats.cgpa < 1.5
-      ? "Pass"
-      : stats.cgpa < 2.5
-      ? "Third Class"
-      : stats.cgpa < 3.5
-      ? "Second Class Lower"
-      : stats.cgpa < 4.5
-      ? "Second Class Upper"
-      : stats.cgpa <= 5
-      ? "First Class"
-      : "Nil";
+        ? "Pass"
+        : stats.cgpa < 2.5
+          ? "Third Class"
+          : stats.cgpa < 3.5
+            ? "Second Class Lower"
+            : stats.cgpa < 4.5
+              ? "Second Class Upper"
+              : stats.cgpa <= 5
+                ? "First Class"
+                : "Nil";
 
   return (
     <div className="
-  bg-gradient-to-br 
-  from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
-  dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden">
+      bg-gradient-to-br 
+      from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
+      dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden">
       <Header title="Profile" subtitle="Your academic summary" />
 
       <div className="px-6 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide scroll-smooth">
         <div className="max-w-3xl mx-auto mt-50 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
           {/* Avatar */}
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark: bg-[#0B1F2A] flex items-center justify-center text-3xl font-bold text-white">
+            <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark:bg-[#0B1F2A] flex items-center justify-center text-3xl font-bold text-white">
               {initial}
             </div>
             <div>

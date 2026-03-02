@@ -61,6 +61,52 @@ export default function Courses() {
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
 
+  // const addCourse = async () => {
+  //   if (!form.code || !form.unit || !form.grade) {
+  //     setMessage("Fill all fields");
+  //     setTimeout(() => setMessage(""), 2500);
+  //     return;
+  //   }
+
+  //   const pattern = /^[A-Z]{3}\s?\d{3}$/i;
+  //   if (!pattern.test(form.code)) {
+  //     setMessage("Invalid course code");
+  //     setTimeout(() => setMessage(""), 2500);
+  //     return;
+  //   }
+
+  //   function normalizeCode(code) {
+  //     return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
+  //   }
+
+  //   const newCourse = {
+  //     semester_id: semesterId,
+  //     code: normalizeCode(form.code),
+  //     unit: Number(form.unit),
+  //     grade: form.grade,
+  //     point: GRADE_POINTS[form.grade],
+  //   };
+
+  //   const { data, error } = await supabase
+  //     .from("courses")
+  //     .insert(newCourse)
+  //     .select()
+  //     .single();
+
+  //   if (!error && data) {
+  //     setCourses((prev) => [...prev, data]);
+  //     setForm({ code: "", unit: "", grade: "" });
+  //     setMessage("");
+  //   } else {
+  //     setMessage("Failed to add course");
+  //     setTimeout(() => setMessage(""), 2500);
+  //   }
+  // };
+
+  function normalizeCode(code) {
+    return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
+  }
+
   const addCourse = async () => {
     if (!form.code || !form.unit || !form.grade) {
       setMessage("Fill all fields");
@@ -69,35 +115,45 @@ export default function Courses() {
     }
 
     const pattern = /^[A-Z]{3}\s?\d{3}$/i;
-    if (!pattern.test(form.code)) {
-      setMessage("Invalid course code");
+
+    const cleanedCode = normalizeCode(form.code);
+
+    if (!pattern.test(cleanedCode)) {
+      setMessage("Invalid course code (e.g MTH101)");
       setTimeout(() => setMessage(""), 2500);
       return;
     }
 
-    function normalizeCode(code) {
-      return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
-    }
-
     const newCourse = {
       semester_id: semesterId,
-      code: normalizeCode(form.code),
+      code: cleanedCode,
       unit: Number(form.unit),
       grade: form.grade,
       point: GRADE_POINTS[form.grade],
     };
 
-    const { data, error } = await supabase
-      .from("courses")
-      .insert(newCourse)
-      .select()
-      .single();
+    try {
+      // 1. Insert into DB
+      const { data, error } = await supabase
+        .from("courses")
+        .insert(newCourse)
+        .select()
+        .single();
 
-    if (!error && data) {
-      setCourses((prev) => [...prev, data]);
+      if (error) throw error;
+
+      // 2. Update UI immediately
+      const updatedCourses = [...courses, data];
+      setCourses(updatedCourses);
+
+      // 3. Reset form
       setForm({ code: "", unit: "", grade: "" });
-      setMessage("");
-    } else {
+
+      // 4. 🔥 Recalculate GPA (VERY IMPORTANT)
+      await calculateAndPersistGPA();
+
+    } catch (err) {
+      console.error("Add failed:", err);
       setMessage("Failed to add course");
       setTimeout(() => setMessage(""), 2500);
     }
@@ -106,71 +162,161 @@ export default function Courses() {
   /* ───────────────────────── DELETE COURSE (OPTIMISTIC) ───────────────────────── */
 
   const deleteCourse = async (id) => {
-    const prev = courses;
-    setCourses((c) => c.filter((course) => course.id !== id));
+    // 1. Save current state (for rollback)
+    const previousCourses = [...courses];
 
-    const { error } = await supabase.from("courses").delete().eq("id", id);
+    // 2. Optimistically update UI
+    setCourses((prev) => prev.filter((course) => course.id !== id));
 
-    if (error) {
-      setCourses(prev); // rollback
+    try {
+      // 3. Delete from DB
+      const { error } = await supabase
+        .from("courses")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // 4. 🔥 Recalculate GPA AFTER successful delete
+      await calculateAndPersistGPA();
+
+    } catch (err) {
+      console.error("Delete failed:", err);
+
+      // 5. Rollback UI if error
+      setCourses(previousCourses);
     }
   };
 
   /* ───────────────────────── GPA + CGPA ───────────────────────── */
 
   const calculateAndPersistGPA = async () => {
-    if (!courses.length) {
-      setMessage("Add courses first");
-      setTimeout(() => setMessage(""), 2500);
-      return;
-    }
-
-    const { totalPoints, totalUnits } = courses.reduce(
-      (acc, c) => {
-        acc.totalPoints += c.point * c.unit;
-        acc.totalUnits += c.unit;
-        return acc;
-      },
-      { totalPoints: 0, totalUnits: 0 }
-    );
-
-    const gpa = totalUnits ? totalPoints / totalUnits : 0;
-
     try {
-      const { data: semesterData, error } = await supabase
-        .from("semesters")
-        .update({ gpa, total_units: totalUnits })
-        .eq("id", semesterId)
-        .select("level_id")
-        .single();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      /* ───────────── 1. GET ALL COURSES FOR USER ───────────── */
+
+      const { data: allCourses, error } = await supabase
+        .from("courses")
+        .select(`
+        id,
+        code,
+        unit,
+        point,
+        semester_id,
+        semesters:semester_id(
+          id,
+          level_id,
+          levels:level_id(user_id)
+        )
+      `)
+        .eq("semesters.levels.user_id", session.user.id);
 
       if (error) throw error;
 
-      const { data: semesters } = await supabase
-        .from("semesters")
-        .select("gpa, total_units")
-        .eq("level_id", semesterData.level_id);
+      /* ───────────── 2. NORMALIZE FUNCTION ───────────── */
 
-      const cgpaData = semesters.reduce(
-        (acc, s) => {
-          acc.points += s.gpa * s.total_units;
-          acc.units += s.total_units;
-          return acc;
-        },
-        { points: 0, units: 0 }
-      );
+      const normalize = (code) =>
+        code.toUpperCase().replace(/\s+/g, "");
 
-      const cgpa = cgpaData.units
-        ? cgpaData.points / cgpaData.units
-        : 0;
+      /* ───────────── 3. GROUP BY COURSE CODE ───────────── */
 
-      await supabase
-        .from("levels")
-        .update({ cgpa })
-        .eq("id", semesterData.level_id);
+      const grouped = {};
 
-      setMessage(`GPA saved: ${gpa.toFixed(2)}`);
-    } catch {
+      allCourses.forEach((c) => {
+        const key = normalize(c.code);
+
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(c);
+      });
+
+      /* ───────────── 4. RESOLVE BEST ATTEMPT ───────────── */
+
+      const resolvedCourses = [];
+
+      Object.values(grouped).forEach((attempts) => {
+        // Sort by best grade (highest point)
+        attempts.sort((a, b) => b.point - a.point);
+
+        const best = attempts[0];
+
+        // Find ORIGINAL attempt (first time taken)
+        const original = attempts.reduce((prev, curr) =>
+          prev.semester_id < curr.semester_id ? prev : curr
+        );
+
+        resolvedCourses.push({
+          ...original,
+          point: best.point, // 🔥 replace failed grade
+        });
+      });
+
+      /* ───────────── 5. CALCULATE GPA PER LEVEL ───────────── */
+
+      const levelMap = {};
+
+      resolvedCourses.forEach((c) => {
+        const levelId = c.semesters.level_id;
+
+        if (!levelMap[levelId]) {
+          levelMap[levelId] = { points: 0, units: 0 };
+        }
+
+        levelMap[levelId].points += c.point * c.unit;
+        levelMap[levelId].units += c.unit;
+      });
+
+      /* ───────────── 6. UPDATE LEVEL CGPA ───────────── */
+
+      for (const levelId in levelMap) {
+        const { points, units } = levelMap[levelId];
+
+        const cgpa = units ? points / units : 0;
+
+        await supabase
+          .from("levels")
+          .update({ cgpa })
+          .eq("id", levelId);
+      }
+
+      /* ───────────── 7. UPDATE CURRENT SEMESTER GPA ───────────── */
+
+      // 🔥 GROUP BY SEMESTER
+      const semesterMap = {};
+
+      resolvedCourses.forEach((c) => {
+        const semId = c.semester_id;
+
+        if (!semesterMap[semId]) {
+          semesterMap[semId] = { points: 0, units: 0 };
+        }
+
+        semesterMap[semId].points += c.point * c.unit;
+        semesterMap[semId].units += c.unit;
+      });
+
+      // 🔥 UPDATE EACH SEMESTER GPA
+      for (const semId in semesterMap) {
+        const { points, units } = semesterMap[semId];
+        const gpa = units ? points / units : 0;
+
+        await supabase
+          .from("semesters")
+          .update({
+            gpa,
+            total_units: units,
+          })
+          .eq("id", semId);
+      }
+
+      /* ───────────── 8. SUCCESS MESSAGE ───────────── */
+
+      setMessage("GPA updated successfully ✅");
+      setTimeout(() => setMessage(""), 2500);
+
+    } catch (err) {
+      console.error("GPA ERROR:", err);
       setMessage("Failed to calculate GPA");
       setTimeout(() => setMessage(""), 2500);
     }
@@ -231,11 +377,11 @@ export default function Courses() {
             </div>
           ))}
 
-          {!!courses.length && (
+          {/* {!!courses.length && (
             <button onClick={calculateAndPersistGPA} className="bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white font-medium hover:bg-white/30 transition cursor-pointer mt-3">
               Calculate GPA
             </button>
-          )}
+          )} */}
         </div>
       </div>
     </div>
