@@ -116,7 +116,7 @@ export default function Courses() {
 
     const cleanedCode = normalizeCode(form.code);
 
-    if (!pattern.test(cleanedCode)) {
+    if (!pattern) {
       setMessage("Invalid course code (e.g MTH101)");
       setTimeout(() => setMessage(""), 2500);
       return;
