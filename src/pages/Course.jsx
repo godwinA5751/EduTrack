@@ -60,8 +60,6 @@ export default function Courses() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
-
-  // const addCourse = async () => {
   //   if (!form.code || !form.unit || !form.grade) {
   //     setMessage("Fill all fields");
   //     setTimeout(() => setMessage(""), 2500);

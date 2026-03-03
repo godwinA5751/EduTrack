@@ -129,7 +129,7 @@ export default function Semester() {
 
     // 2️⃣ Normalize
     const normalize = (code) =>
-      code?.toUpperCase().replace(/\s+/g, "") || "";
+      code?.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
 
     // 3️⃣ Group by course code
     const grouped = {};
