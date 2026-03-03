@@ -54,14 +54,14 @@ export default function Courses() {
     init();
   }, [fetchCourses, navigate]);
 
+  
+
   /* ───────────────────────── HANDLERS ───────────────────────── */
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
-
-  // const addCourse = async () => {
   //   if (!form.code || !form.unit || !form.grade) {
   //     setMessage("Fill all fields");
   //     setTimeout(() => setMessage(""), 2500);
@@ -188,6 +188,7 @@ export default function Courses() {
     }
   };
 
+  
   /* ───────────────────────── GPA + CGPA ───────────────────────── */
 
   const calculateAndPersistGPA = async () => {
@@ -310,6 +311,20 @@ export default function Courses() {
           .eq("id", semId);
       }
 
+      const { data: allSemesters } = await supabase
+        .from("semesters")
+        .select("id");
+
+      allSemesters.forEach(async (sem) => {
+        if (!semesterMap[sem.id]) {
+          // No courses exist for this semester → set GPA to 0
+          await supabase
+            .from("semesters")
+            .update({ gpa: 0, total_units: 0 })
+            .eq("id", sem.id);
+        }
+      });
+
       /* ───────────── 8. SUCCESS MESSAGE ───────────── */
 
       setMessage("GPA updated successfully ✅");
@@ -332,7 +347,7 @@ export default function Courses() {
       {/* Header */}
       <div className="flex items-center gap-3 fixed top-6 left-4 z-50 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl">
         <button onClick={() => navigate("/semester", { state: { level } })}>
-          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-10px]" />
+          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-2px]" />
         </button>
         <h1 className="text-white font-bold">
           {level} Level – {semester}
@@ -376,12 +391,6 @@ export default function Courses() {
               <span className="text-center"><FaTrash onClick={() => deleteCourse(c.id)} className="mx-auto cursor-pointer hover:text-red-400 transition" /></span>
             </div>
           ))}
-
-          {/* {!!courses.length && (
-            <button onClick={calculateAndPersistGPA} className="bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white font-medium hover:bg-white/30 transition cursor-pointer mt-3">
-              Calculate GPA
-            </button>
-          )} */}
         </div>
       </div>
     </div>

@@ -61,7 +61,7 @@ export default function Sidebar({ icon, name }) {
       >
         {/* Logo */}
         <div className="mb-8 flex items-center gap-2 justify-end">
-          <img src={Logo} alt="EduTrack Logo" className="w-8 h-8 py-1" />
+          <img src={Logo} loading="lazy" alt="EduTrack Logo" className="w-8 h-8 py-1" />
           <h1 className="text-2xl font-bold text-white">EduTrack</h1>
         </div>
 
