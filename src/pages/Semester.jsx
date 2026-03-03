@@ -16,12 +16,12 @@ export default function Semester() {
   const [message, setMessage] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  /* ───────── Guard ───────── */
+  // Guard
   useEffect(() => {
     if (!levelNumber) navigate("/levels");
   }, [levelNumber, navigate]);
 
-  /* ───────── Fetch Level & Semesters ───────── */
+  // Fetch Level + Semesters + Courses
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -31,27 +31,40 @@ export default function Semester() {
           return;
         }
 
-        const userId = session.user.id;
-
-        // 1️⃣ Fetch the level
-        const { data: levelData, error: levelError } = await supabase
+        // Fetch level
+        const { data: levelData, error } = await supabase
           .from("levels")
           .select("id, level")
-          .eq("user_id", userId)
+          .eq("user_id", session.user.id)
           .eq("level", levelNumber)
           .single();
-        if (levelError) throw levelError;
+        if (error) throw error;
         setLevel(levelData);
 
-        // 2️⃣ Fetch semesters (use GPA from DB directly)
+        // Fetch semesters + courses
         const { data: semesterData, error: semError } = await supabase
           .from("semesters")
-          .select("*")
+          .select(`
+            id,
+            semester,
+            gpa,
+            total_units,
+            courses (
+              id,
+              code,
+              unit,
+              point
+            )
+          `)
           .eq("level_id", levelData.id)
           .order("semester");
+
         if (semError) throw semError;
 
-        setSemesters(semesterData || []);
+        // ✅ Calculate carryovers immediately
+        const updatedSemesters = applyCarryovers(semesterData || []);
+        setSemesters(updatedSemesters);
+
       } catch {
         setMessage("Failed to load semesters");
       } finally {
@@ -62,7 +75,7 @@ export default function Semester() {
     fetchData();
   }, [levelNumber, navigate]);
 
-  /* ───────── Add Semester ───────── */
+  // Add semester
   const addSemester = async () => {
     if (isAdding) return;
     setIsAdding(true);
@@ -83,14 +96,14 @@ export default function Semester() {
         .insert({
           level_id: level.id,
           semester: nextSemester,
-          gpa: 0,          // default GPA
-          total_units: 0,  // default units
+          gpa: null,
+          total_units: 0,
         })
         .select()
         .single();
       if (error) throw error;
 
-      setSemesters((prev) => [...prev, data]);
+      setSemesters(prev => [...prev, data]);
       setMessage(`Semester ${nextSemester} added`);
     } catch {
       setMessage("Failed to add semester");
@@ -99,7 +112,86 @@ export default function Semester() {
     }
   };
 
-  /* ───────── UI ───────── */
+  // Function to apply carryovers like in Profile.jsx
+  const applyCarryovers = (semesterList) => {
+    // 1️⃣ Flatten all courses WITH semester number
+    const allCourses = [];
+
+    semesterList.forEach((sem) => {
+      sem.courses?.forEach((course) => {
+        allCourses.push({
+          ...course,
+          semesterId: sem.id,
+          semesterNumber: sem.semester, // ✅ CRITICAL FIX
+        });
+      });
+    });
+
+    // 2️⃣ Normalize
+    const normalize = (code) =>
+      code?.toUpperCase().replace(/\s+/g, "") || "";
+
+    // 3️⃣ Group by course code
+    const grouped = {};
+
+    allCourses.forEach((c) => {
+      const key = normalize(c.code);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(c);
+    });
+
+    // 4️⃣ Resolve carryovers properly
+    const resolved = {};
+
+    Object.values(grouped).forEach((attempts) => {
+      // best grade
+      attempts.sort((a, b) => (b.point || 0) - (a.point || 0));
+      const best = attempts[0];
+
+      // 🔥 ORIGINAL ATTEMPT (by semester number, NOT id)
+      const original = attempts.reduce((a, b) =>
+        a.semesterNumber < b.semesterNumber ? a : b
+      );
+
+      resolved[normalize(original.code)] = best.point || 0;
+    });
+
+    // 5️⃣ Apply to semesters
+    const updatedSemesters = semesterList.map((sem) => {
+      const updatedCourses =
+        sem.courses?.map((c) => {
+          const key = normalize(c.code);
+
+          return {
+            ...c,
+            point: resolved[key] ?? c.point ?? 0,
+          };
+        }) || [];
+
+      const totalPoints = updatedCourses.reduce(
+        (sum, c) => sum + (c.point || 0) * (c.unit || 0),
+        0
+      );
+
+      const totalUnits = updatedCourses.reduce(
+        (sum, c) => sum + (c.unit || 0),
+        0
+      );
+
+      const gpa = totalUnits ? totalPoints / totalUnits : 0;
+
+      return {
+        ...sem,
+        courses: updatedCourses,
+        totalPoints,
+        totalUnits,
+        gpa,
+      };
+    });
+
+    return updatedSemesters;
+  };
+
   if (loading) return <SemesterSkeleton />;
 
   return (
@@ -107,37 +199,34 @@ export default function Semester() {
       bg-gradient-to-br 
       from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
       dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
-      
+
       {/* Header */}
       <div className="fixed top-6 left-4 flex items-center gap-3 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl z-50">
         <button onClick={() => navigate("/levels")}>
-          <FaArrowLeft className="text-white hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-2px] cursor-pointer" />
+          <FaArrowLeft className="text-white hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-10px] cursor-pointer" />
         </button>
-        <h1 className="text-white font-bold">{level.level} Level Semesters</h1>
+        <h1 className="text-white font-bold">{level?.level} Level Semesters</h1>
       </div>
 
-      {/* Semester Cards */}
+      {/* Semesters Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-32">
-        {semesters.map((sem) => (
+        {semesters.map(sem => (
           <SemesterCard
             key={sem.id}
-            name={`${sem.semester}${["th","st","nd","rd"][sem.semester] || "th"} Semester`}
-            gpa={sem.gpa?.toFixed(2) || "0.00"} // ✅ Use DB GPA directly
-            onClick={() =>
-              navigate("/courses", {
-                state: { level: level.level, semester: sem.semester, semesterId: sem.id },
-              })
-            }
+            name={`${sem.semester}${["th", "st", "nd", "rd"][sem.semester] || "th"} Semester`}
+            gpa={sem.gpa?.toFixed(2) || "0.00"}
+            onClick={() => navigate("/courses", {
+              state: { level: level.level, semester: sem.semester, semesterId: sem.id }
+            })}
             className="cursor-pointer hover:scale-105 transition bg-white/30 dark:bg-white/10 backdrop-blur-md rounded-3xl p-6"
           />
         ))}
 
+        {/* Add Semester */}
         {semesters.length < 3 && (
           <div
             onClick={addSemester}
-            disabled={isAdding}
-            className={`
-              flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 dark:border-white/10 text-white cursor-pointer hover:bg-white/10 dark:hover:bg-white/10 transition
+            className={`flex items-center justify-center h-40 rounded-3xl border-2 border-dashed border-white/60 dark:border-white/10 text-white cursor-pointer hover:bg-white/10 dark:hover:bg-white/10 transition
               ${isAdding ? 'cursor-not-allowed text-gray-500 border-gray-200 dark:border-gray-800' : 'hover:border-white/80'}
             `}
           >

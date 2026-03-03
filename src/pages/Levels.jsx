@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import LevelCard from "../components/cgpa/LevelCard";
@@ -10,41 +10,60 @@ export default function Levels() {
   const navigate = useNavigate();
 
   const [levels, setLevels] = useState([]);
+  const [academicCourses, setAcademicCourses] = useState([]); // flattened courses
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ───────── Fetch Levels ───────── */
+  /* ───────── FETCH LEVELS + COURSES ───────── */
   useEffect(() => {
-    const fetchLevels = async () => {
+    const fetchData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+
         if (!session) {
           navigate("/login");
           return;
         }
-        const userId = session.user.id;
-        setUserId(userId);
 
-        // Fetch all levels and semesters with stored GPA
-        const { data: levelsData, error } = await supabase
+        setUserId(session.user.id);
+
+        const { data: levelData, error: levelError } = await supabase
           .from("levels")
           .select(`
             id,
             level,
-            cgpa,
             semesters (
               id,
               semester,
-              gpa,
-              total_units
+              courses (
+                code,
+                unit,
+                point
+              )
             )
           `)
-          .eq("user_id", userId)
+          .eq("user_id", session.user.id)
           .order("level");
 
-        if (error) throw error;
+        if (levelError) throw levelError;
 
-        setLevels(levelsData || []);
+        setLevels(levelData || []);
+
+        // Flatten all courses for CGPA calculation
+        const allCourses = [];
+        levelData.forEach((lvl) => {
+          lvl.semesters?.forEach((sem) => {
+            sem.courses?.forEach((course) => {
+              allCourses.push({
+                ...course,
+                levelId: lvl.id,
+                semesterId: sem.id,
+              });
+            });
+          });
+        });
+
+        setAcademicCourses(allCourses);
       } catch (err) {
         console.error("Failed to fetch levels:", err);
       } finally {
@@ -52,9 +71,51 @@ export default function Levels() {
       }
     };
 
-    fetchLevels();
+    fetchData();
   }, [navigate]);
 
+  /* ───────── CARRYOVER-AWARE CGPA PER LEVEL ───────── */
+  const levelStats = useMemo(() => {
+    const normalize = (code) => code?.toUpperCase().replace(/\s+/g, "") || "";
+    const grouped = {};
+
+    academicCourses.forEach((course) => {
+      const code = normalize(course.code);
+      if (!grouped[code]) grouped[code] = [];
+      grouped[code].push(course);
+    });
+
+    const resolved = [];
+    Object.values(grouped).forEach((attempts) => {
+      // Sort by point descending → best attempt first
+      attempts.sort((a, b) => (b.point || 0) - (a.point || 0));
+
+      const best = attempts[0];
+
+      // Keep unit from the earliest attempt (original semester)
+      const original = attempts.reduce((a, b) =>
+        a.semesterId < b.semesterId ? a : b
+      );
+
+      resolved.push({
+        ...original,
+        point: best.point || 0,
+      });
+    });
+
+    // Sum totals per level
+    const map = {};
+    resolved.forEach((c) => {
+      const levelId = c.levelId;
+      if (!map[levelId]) map[levelId] = { units: 0, points: 0 };
+      map[levelId].units += c.unit || 0;
+      map[levelId].points += (c.unit || 0) * (c.point || 0);
+    });
+
+    return map;
+  }, [academicCourses]);
+
+  /* ───────── UI ───────── */
   if (loading) return <LevelsSkeleton />;
 
   return (
@@ -66,21 +127,17 @@ export default function Levels() {
       <Header title="Levels" subtitle="Your academic levels overview" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-[144px] px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">
-
         {levels.map((lvl) => {
-          // Use stored GPA directly from DB
-          const gpa = lvl.semesters.reduce((acc, sem) => acc + (sem.gpa || 0) * (sem.total_units || 0), 0)
-            / lvl.semesters.reduce((acc, sem) => acc + (sem.total_units || 0), 0) || 0;
-          const totalUnits = lvl.semesters?.reduce((sum, s) => sum + (s.total_units || 0), 0) ?? 0;
-          const totalPoints = lvl.semesters?.reduce((sum, s) => sum + ((s.gpa || 0) * (s.total_units || 0)), 0) ?? 0;
+          const stats = levelStats[lvl.id] || { units: 0, points: 0 };
+          const cgpa = stats.units ? stats.points / stats.units : 0;
 
           return (
             <LevelCard
               key={lvl.id}
               level={lvl.level}
-              gpa={gpa}
-              point={totalPoints.toFixed(0)}
-              unit={totalUnits}
+              gpa={cgpa} // carryover-aware CGPA
+              point={stats.points.toFixed(0)}
+              unit={stats.units}
               onClick={() =>
                 navigate("/semester", { state: { level: lvl.level } })
               }
