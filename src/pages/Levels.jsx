@@ -136,8 +136,6 @@ export default function Levels() {
               key={lvl.id}
               level={lvl.level}
               gpa={cgpa} // carryover-aware CGPA
-              point={stats.points.toFixed(0)}
-              unit={stats.units}
               onClick={() =>
                 navigate("/semester", { state: { level: lvl.level } })
               }
