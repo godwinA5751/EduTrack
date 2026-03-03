@@ -24,7 +24,7 @@ export default function LevelCard({ level, gpa, onClick }) {
       <button
         onClick={onClick}
         className="
-          mt-2 w-full py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
+          mt-10 w-full py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
           dark:bg-[#0F3A47]/40 dark:text-[#7FD6E3] font-medium hover:bg-[#A7EBF2]/60 dark:hover:bg-[#0F3A47]/60 transition cursor-pointer"
       >
         {gpa === 0.0 ? "Get Started →" : "View Semesters →"}
