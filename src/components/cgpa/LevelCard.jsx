@@ -1,5 +1,5 @@
 
-export default function LevelCard({ level, gpa, onClick, unit, point}) {
+export default function LevelCard({ level, gpa, onClick }) {
 
   return (
     <div className="rounded-3xl bg-white dark:bg-gray-800 shadow-md p-6 hover:shadow-lg transition h-50">
@@ -20,10 +20,6 @@ export default function LevelCard({ level, gpa, onClick, unit, point}) {
         <span className="text-sm text-gray-400">
           / 5.00
         </span>
-      </div>
-      <div className="mt-2 px-2 space-y-1 flex justify-between">
-        <p><span className="text-sm text-gray-400">Units:</span><span className="text-md ml-2 text-white">{unit}</span></p>
-        <p><span className="text-sm text-gray-400">Points:</span><span className="text-md ml-2 text-white">{point}</span></p>
       </div>
       <button
         onClick={onClick}
