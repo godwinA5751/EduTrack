@@ -116,7 +116,7 @@ export default function Courses() {
 
     const cleanedCode = normalizeCode(form.code);
 
-    if (!pattern) {
+    if (!pattern.test(cleanedCode.replace(" ", ""))) {
       setMessage("Invalid course code (e.g MTH101)");
       setTimeout(() => setMessage(""), 2500);
       return;
@@ -198,17 +198,18 @@ export default function Courses() {
       const { data: allCourses, error } = await supabase
         .from("courses")
         .select(`
-        id,
-        code,
-        unit,
-        point,
-        semester_id,
-        semesters:semester_id(
           id,
-          level_id,
-          levels:level_id(user_id)
-        )
-      `)
+          code,
+          unit,
+          point,
+          created_at,
+          semester_id,
+          semesters:semester_id(
+            id,
+            level_id,
+            levels:level_id(user_id)
+          )
+        `)
         .eq("semesters.levels.user_id", session.user.id);
 
       if (error) throw error;
@@ -234,20 +235,24 @@ export default function Courses() {
       const resolvedCourses = [];
 
       Object.values(grouped).forEach((attempts) => {
-        // Sort by best grade (highest point)
-        attempts.sort((a, b) => b.point - a.point);
 
-        const best = attempts[0];
+        // Best grade attempt
+        const best = attempts.reduce((prev, curr) =>
+          prev.point > curr.point ? prev : curr
+        );
 
-        // Find ORIGINAL attempt (first time taken)
+        // First time course was taken
         const original = attempts.reduce((prev, curr) =>
-          prev.semester_id < curr.semester_id ? prev : curr
+          new Date(prev.created_at) < new Date(curr.created_at)
+            ? prev
+            : curr
         );
 
         resolvedCourses.push({
           ...original,
-          point: best.point, // 🔥 replace failed grade
+          point: best.point,
         });
+
       });
 
       /* ───────────── 5. CALCULATE GPA PER LEVEL ───────────── */

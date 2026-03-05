@@ -39,7 +39,8 @@ export default function Profile() {
                 courses (
                   code,
                   unit,
-                  point
+                  point,
+                  created_at
                 )
               )
             `)
@@ -63,6 +64,15 @@ export default function Profile() {
 
   // ✅ Use carryover-aware calculation for stats
   const stats = useMemo(() => {
+    if (!academic.length) {
+      return {
+        levels: 0,
+        semesters: 0,
+        units: 0,
+        points: 0,
+        cgpa: 0
+      };
+    }
     const normalize = (code) => code?.toUpperCase().replace(/\s+/g, "") || "";
 
     // 1️⃣ Flatten all courses with level & semester info
@@ -91,12 +101,13 @@ export default function Profile() {
     const resolved = [];
     Object.values(grouped).forEach((attempts) => {
       // Sort by point descending
-      attempts.sort((a, b) => (b.point || 0) - (a.point || 0));
-      const best = attempts[0];
+      const best = attempts.reduce((a, b) =>
+        (a.point || 0) > (b.point || 0) ? a : b
+      );
 
       // Keep unit from the first attempt (original semester)
       const original = attempts.reduce((a, b) =>
-        a.semesterId < b.semesterId ? a : b
+        new Date(a.created_at) < new Date(b.created_at) ? a : b
       );
 
       resolved.push({
@@ -109,8 +120,8 @@ export default function Profile() {
     let totalUnits = 0;
     let totalPoints = 0;
     resolved.forEach((c) => {
-      const unit = c.unit || 0;
-      const point = c.point || 0;
+      const unit = Number(c.unit) || 0;
+      const point = Number(c.point) || 0;
       totalUnits += unit;
       totalPoints += unit * point;
     });
@@ -146,9 +157,9 @@ export default function Profile() {
         : stats.cgpa < 2.5
           ? "Third Class"
           : stats.cgpa < 3.5
-            ? "Second Class Lower"
+            ? "2:2"
             : stats.cgpa < 4.5
-              ? "Second Class Upper"
+              ? "2:1"
               : stats.cgpa <= 5
                 ? "First Class"
                 : "Nil";
