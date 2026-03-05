@@ -60,47 +60,6 @@ export default function Courses() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
-  //   if (!form.code || !form.unit || !form.grade) {
-  //     setMessage("Fill all fields");
-  //     setTimeout(() => setMessage(""), 2500);
-  //     return;
-  //   }
-
-  //   const pattern = /^[A-Z]{3}\s?\d{3}$/i;
-  //   if (!pattern.test(form.code)) {
-  //     setMessage("Invalid course code");
-  //     setTimeout(() => setMessage(""), 2500);
-  //     return;
-  //   }
-
-  //   function normalizeCode(code) {
-  //     return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
-  //   }
-
-  //   const newCourse = {
-  //     semester_id: semesterId,
-  //     code: normalizeCode(form.code),
-  //     unit: Number(form.unit),
-  //     grade: form.grade,
-  //     point: GRADE_POINTS[form.grade],
-  //   };
-
-  //   const { data, error } = await supabase
-  //     .from("courses")
-  //     .insert(newCourse)
-  //     .select()
-  //     .single();
-
-  //   if (!error && data) {
-  //     setCourses((prev) => [...prev, data]);
-  //     setForm({ code: "", unit: "", grade: "" });
-  //     setMessage("");
-  //   } else {
-  //     setMessage("Failed to add course");
-  //     setTimeout(() => setMessage(""), 2500);
-  //   }
-  // };
-
   function normalizeCode(code) {
     return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
   }
@@ -251,6 +210,7 @@ export default function Courses() {
         resolvedCourses.push({
           ...original,
           point: best.point,
+          isCarrying: attempts.some(a => a.point === 0)
         });
 
       });
@@ -335,7 +295,7 @@ export default function Courses() {
       {/* Header */}
       <div className="flex items-center gap-3 fixed top-6 left-4 z-50 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl">
         <button onClick={() => navigate("/semester", { state: { level } })}>
-          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-10px]" />
+          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-2px]" />
         </button>
         <h1 className="text-white font-bold">
           {level} Level – {semester}
@@ -373,7 +333,12 @@ export default function Courses() {
 
           {courses.map((c) => (
             <div key={c.id} className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white">
-              <span>{c.code}</span>
+              <span>
+                {c.code}
+                {c.isCarrying && (
+                  <span className="ml-2 text-xs text-yellow-300">🔁</span>
+                )}
+              </span>
               <span className="text-center">{c.unit}</span>
               <span className="text-center">{c.grade}</span>
               <span className="text-center"><FaTrash onClick={() => deleteCourse(c.id)} className="mx-auto cursor-pointer hover:text-red-400 transition" /></span>
