@@ -16,6 +16,7 @@ export default function Courses() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ code: "", unit: "", grade: "" });
   const [message, setMessage] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   /* ───────────────────────── GUARD ───────────────────────── */
 
@@ -89,6 +90,11 @@ export default function Courses() {
       point: GRADE_POINTS[form.grade],
     };
 
+    if (isProcessing) return;
+   
+     setIsProcessing(true);
+
+
     try {
       // 1. Insert into DB
       const { data, error } = await supabase
@@ -113,6 +119,8 @@ export default function Courses() {
       console.error("Add failed:", err);
       setMessage("Failed to add course");
       setTimeout(() => setMessage(""), 2500);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -125,6 +133,9 @@ export default function Courses() {
     // 2. Optimistically update UI
     setCourses((prev) => prev.filter((course) => course.id !== id));
 
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
     try {
       // 3. Delete from DB
       const { error } = await supabase
@@ -142,6 +153,8 @@ export default function Courses() {
 
       // 5. Rollback UI if error
       setCourses(previousCourses);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -289,13 +302,13 @@ export default function Courses() {
 
   return (
     <div className="min-h-screen p-8 
-      bg-gradient-to-br 
+      bg-linear-to-br 
       from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
       dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
       {/* Header */}
       <div className="flex items-center gap-3 fixed top-6 left-4 z-50 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl">
         <button onClick={() => navigate("/semester", { state: { level } })}>
-          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-[-2px]" />
+          <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-0.5" />
         </button>
         <h1 className="text-white font-bold">
           {level} Level – {semester}
@@ -316,8 +329,8 @@ export default function Courses() {
               ))}
             </select>
           </div>
-          <button onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition">
-            Add Course
+          <button disabled={isProcessing} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
+            {isProcessing ? "Adding..." : "Add Course"}
           </button>
           {message && <p className="text-white">{message}</p>}
         </div>
@@ -341,7 +354,17 @@ export default function Courses() {
               </span>
               <span className="text-center">{c.unit}</span>
               <span className="text-center">{c.grade}</span>
-              <span className="text-center"><FaTrash onClick={() => deleteCourse(c.id)} className="mx-auto cursor-pointer hover:text-red-400 transition" /></span>
+              <span className="text-center">
+                <FaTrash
+                  onClick={() => !isProcessing && deleteCourse(c.id)}
+                  className={`
+                    mx-auto transition
+                    ${isProcessing
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer hover:text-red-400"}
+                  `}
+                />
+              </span>
             </div>
           ))}
         </div>

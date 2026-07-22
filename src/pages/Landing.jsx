@@ -6,7 +6,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen flex items-center justify-center 
-  bg-gradient-to-br 
+  bg-linear-to-br 
   from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
   dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] px-4">
       <div className="bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-12 max-w-2xl text-center shadow-lg flex flex-col gap-6">

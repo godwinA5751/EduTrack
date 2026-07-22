@@ -62,7 +62,7 @@ export default function CGPAProgress({ cgpa = 0 }) {
         <span className="font-bold text-3xl text-white">
           {cgpa.toFixed(2)}
         </span>
-        <span className="text-1sm ml-1 text-gray-500 text-white/90">Cumulative GPA</span>
+        <span className="text-1sm ml-1 text-white/90">Cumulative GPA</span>
       </div>
     </div>
   );
