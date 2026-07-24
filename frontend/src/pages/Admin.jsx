@@ -85,8 +85,14 @@ export default function Admin() {
         setUsers(data.users);
         setPagination(data.pagination);
       } catch (err) {
-        console.error(err);
-      } finally {
+  console.error(err);
+
+  toast.error(
+    err.response?.data?.message ||
+    err.message ||
+    "Failed to load users."
+  );
+} finally {
         setLoading(false);
         setFetching(false);
       }
