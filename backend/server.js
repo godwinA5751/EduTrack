@@ -9,19 +9,30 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  process.env.DEV_URL,
+  process.env.FRONTEND_URL,
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.use("/admin", adminLimiter);
-
 app.use("/admin", adminRoutes);
-
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "EduTrack Admin API Running"
-  });
-});
 
 const PORT = process.env.PORT || 5000;
 
