@@ -61,13 +61,5 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/change-password" replace />;
   }
 
-  // Prevent returning to change-password after it's changed
-  if (
-    !mustChangePassword &&
-    location.pathname === "/change-password"
-  ) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   return children;
 }
