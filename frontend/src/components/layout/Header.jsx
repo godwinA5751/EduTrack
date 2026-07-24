@@ -53,7 +53,7 @@ export default function Header({ title, subtitle }) {
 
         {/* Right */}
         <div className="text-right">
-          <Sidebar icon={initial} name={user.full_name} />
+          <Sidebar icon={initial} name={user.full_name} role={user.role} />
         </div>
       </div>
     </header>

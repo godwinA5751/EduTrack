@@ -36,22 +36,30 @@ export default function ChangePassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
+      // 2️⃣ Get current session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+      
+        // 3️⃣ Clear must_change_password flag
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            must_change_password: false,
+          })
+          .eq("id", session.user.id);
+      
+        if (profileError) throw profileError;
+
       setMessage({
-        text: "Password updated. Please login again.",
+        text: "Password updated successfully.",
         type: "success",
       });
 
       // 2️⃣ Small delay so user sees message
       setTimeout(async () => {
-        // 3️⃣ Sign out user
-        await supabase.auth.signOut();
-
-        // 4️⃣ Clear any local data
-        localStorage.clear();
-
-        // 5️⃣ Redirect to login
-        navigate("/login", { replace: true });
-      }, 1500);
+        navigate("/dashboard", { replace: true });
+      }, 3000);
     } catch (err) {
       setMessage({
         text: err.message || "Failed to update password",

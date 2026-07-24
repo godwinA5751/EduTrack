@@ -12,6 +12,7 @@ const Levels = lazy(() => import("./pages/Levels"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Semester = lazy(() => import("./pages/Semester"));
 const Course = lazy(() => import("./pages/Course"));
+const Admin = lazy(() => import("./pages/Admin"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 
 function App() {
@@ -66,6 +67,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Course />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <Admin />
             </ProtectedRoute>
           }
         />

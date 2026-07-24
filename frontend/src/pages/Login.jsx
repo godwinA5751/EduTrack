@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
 import { supabase } from "../lib/supabaseClient";
 
 const matricToEmail = (matricNo) =>
@@ -64,12 +64,41 @@ export default function Login() {
       // ✅ Optional (temporary, until dashboard fully uses Supabase)
       localStorage.setItem("currentUser", JSON.stringify(profile));
 
+      if (profile.must_change_password) {
+        navigate("/change-password");
+        return;
+      }
+      
       navigate("/dashboard");
     } catch (err) {
       setMessage({ text: `${err}Something went wrong`, type: "error" });
     }
   };
 
+  const whatsappLink = () => {
+    const matricNo = form.matricNo.trim().toUpperCase();
+    if (!matricNo) {
+      setMessage({
+        text: "Please enter your matric number first.",
+        type: "error",
+      });
+      setTimeout(() => {
+        setMessage({ text: "", type: "" });
+      }, 3000);
+      return;
+    }
+    const message = encodeURIComponent(`
+      Hello EduTrack Admin,
+      I forgot my EduTrack password.
+      Matric Number: ${matricNo}
+      Please help me reset my password.
+      Thank you.
+    `);
+    window.open(
+      `https://wa.me/+2348130575100?text=${message}`,
+      "_blank"
+    );
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center 
@@ -115,6 +144,29 @@ export default function Login() {
         >
           Login
         </Button>
+        <p
+          className="
+          flex items-center 
+          justify-center 
+          gap-4
+          w-full 
+          bg-white/30 dark:bg-white/10 
+          hover:bg-white/50 dark:hover:bg-white/20 
+          text-white 
+          font-semibold 
+          px-6 
+          py-3 
+          rounded-2xl 
+          transition-all
+          cursor-pointer
+          "
+          onClick={whatsappLink}
+        >
+          <FaWhatsapp size={30} />
+          <span className="text-sm">
+            Forgot your password? Message EduTrack Admin on WhatsApp
+          </span>
+        </p>
         {message.text && (
           <div
             className={`text-center text-sm font-semibold transition-all ${message.type === "error" ? "text-[red]/50" : "text-[lightgreen]"

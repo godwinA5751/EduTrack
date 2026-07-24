@@ -6,11 +6,12 @@ import {
   FaLayerGroup,
   FaUser,
   FaTimes,
-  FaLock
+  FaLock,
+  FaUserShield,
 } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
 
-export default function Sidebar({ icon, name }) {
+export default function Sidebar({ icon, name, role }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
@@ -24,7 +25,19 @@ export default function Sidebar({ icon, name }) {
     { name: "Dashboard", icon: <FaHome />, href: "/dashboard" },
     { name: "Levels", icon: <FaLayerGroup />, href: "/levels" },
     { name: "Profile", icon: <FaUser />, href: "/profile" },
+  
+    ...(role === "admin"
+      ? [
+          {
+            name: "Admin",
+            icon: <FaUserShield />,
+            href: "/admin",
+          },
+        ]
+      : []),
+  
     { name: "Change Password", icon: <FaLock />, href: "/change-password" },
+  
     {
       name: "Logout",
       icon: <FaTimes />,
@@ -33,7 +46,6 @@ export default function Sidebar({ icon, name }) {
         await supabase.auth.signOut();
         window.location.href = "/login";
       },
-
     },
   ];
 
@@ -114,7 +126,7 @@ export default function Sidebar({ icon, name }) {
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{name}</p>
-            <p className="text-xs text-white/80">Student</p>
+            <p className="text-xs text-white/80">{ role }</p>
           </div>
         </div>
       </aside>
