@@ -81,9 +81,10 @@ export default function Admin() {
           },
         });
   
-        setStats(data.stats);
-        setUsers(data.users);
-        setPagination(data.pagination);
+        setStats(data.stats ?? { totalUsers: 0, students: 0, admins: 0 });
+        setUsers(data.users ?? []);
+        setPagination(data.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 1 });
+
       } catch (err) {
   console.error(err);
 
