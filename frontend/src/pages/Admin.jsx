@@ -1,6 +1,7 @@
 
 import Header from "../components/layout/Header";
 import StatCard from "../components/admin/StatCard";
+import { FaUsers } from "react-icons/fa"
 export default function Admin() {
   
   return (
