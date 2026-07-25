@@ -7,7 +7,9 @@ export default function UserTable({
 }) {
   return (
     <div className="mt-8 overflow-hidden rounded-3xl bg-white dark:bg-gray-800 shadow-md">
-      <table className="w-full">
+      <div className="overflow-x-auto">
+
+       <table className="min-w-[700px] w-full">
         <thead className="bg-[#199FB1] text-white">
           <tr>
             <th className="px-6 py-4 text-left">Name</th>
@@ -84,6 +86,7 @@ export default function UserTable({
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
