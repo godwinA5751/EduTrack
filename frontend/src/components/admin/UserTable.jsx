@@ -18,7 +18,7 @@ export default function UserTable({
         </thead>
 
         <tbody>
-          {users.length === 0 ? (
+          {!users || users.length === 0 ? (
             <tr>
               <td
                 colSpan={4}
