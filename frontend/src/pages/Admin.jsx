@@ -80,6 +80,8 @@ export default function Admin() {
             role
           },
         });
+        toast(JSON.stringify(data));
+
   
         setStats(data.stats ?? { totalUsers: 0, students: 0, admins: 0 });
         setUsers(data.users ?? []);
