@@ -11,6 +11,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     matricNo: "",
@@ -35,6 +36,7 @@ export default function Login() {
       // 1️⃣ Normalize matric number
       const matricNo = form.matricNo.trim().toUpperCase();
       const email = matricToEmail(matricNo);
+      setLoading(true);
 
       // 2️⃣ Login with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -72,6 +74,8 @@ export default function Login() {
       navigate("/dashboard");
     } catch (err) {
       setMessage({ text: `${err}Something went wrong`, type: "error" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -139,10 +143,12 @@ export default function Login() {
         </div>
 
         <Button
+          disabled={loading}
+          loading={loading}
           type="submit"
-          className="w-full bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl transition-all"
+          className={`w-full bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl transition-all`}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </Button>
         <p
           className="
@@ -169,7 +175,7 @@ export default function Login() {
         </p>
         {message.text && (
           <div
-            className={`text-center text-sm font-semibold transition-all ${message.type === "error" ? "text-[red]/50" : "text-[lightgreen]"
+            className={`text-center text-sm font-semibold transition-all ${message.type === "error" ? "dark:text-red-400 text-red-500" : "text-[lightgreen]"
               }`}
           >
             {message.text}

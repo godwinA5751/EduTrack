@@ -116,7 +116,7 @@ export default function ChangePassword() {
         {message.text && (
           <p
             className={`text-center text-sm ${message.type === "error"
-              ? "text-red-500"
+              ? "text-red-400"
               : "text-green-400"
               }`}
           >

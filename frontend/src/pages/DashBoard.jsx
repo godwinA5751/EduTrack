@@ -109,8 +109,6 @@ export default function DashBoard() {
     fetchCGPA();
   }, [navigate]);
 
-  if (loading) return <DashboardSkeleton />;
-
   return (
     <div className="overflow-hidden min-h-screen p-8 
       bg-linear-to-br 
@@ -119,10 +117,12 @@ export default function DashBoard() {
 
       <Header title="Dashboard" subtitle="Track your academic progress" />
 
-      <div className="flex items-center justify-center gap-15 flex-col lg:flex-row h-screen overflow-y-auto scrollbar-hide scroll-smooth">
-        <CGPAProgress cgpa={cumulativeCGPA} />
-        <Message />
-      </div>
+      {loading ? <DashboardSkeleton /> : (
+        <div className="flex items-center justify-center gap-15 flex-col lg:flex-row absolute top-[50%] translate-x-[-50%] translate-y-[-50%] left-[50%]">
+          <CGPAProgress cgpa={cumulativeCGPA} />
+          <Message />
+        </div>
+      )}
     </div>
   );
 }

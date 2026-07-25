@@ -2,38 +2,44 @@ import Sidebar from "./SideBar";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import HeaderSkeleton from "../ui/HeaderSkeleton";
 
 export default function Header({ title, subtitle }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        navigate("/login");
-        return;
+      try{
+        setLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+  
+        if (!session) {
+          navigate("/login");
+          return;
+        }
+  
+        const userId = session.user.id;
+  
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+  
+        setUser(profile);
+      } catch (e) {
+        if (e) navigate("/login");
+      } finally {
+        setLoading(false);
       }
-
-      const userId = session.user.id;
-
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error || !profile) {
-        navigate("/login");
-        return;
-      }
-
-      setUser(profile);
     };
 
     fetchUser();
   }, [navigate]);
+
+  if (loading) return <HeaderSkeleton />;
 
   if (!user) return null;
 

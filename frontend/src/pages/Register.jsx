@@ -10,6 +10,7 @@ const matricToEmail = (matricNo) =>
 export default function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -32,6 +33,7 @@ export default function Register() {
 
     if (!form.fullName || !form.matricNo || !form.password || !form.level) {
       setMessage({ text: "Please fill all fields", type: "error" });
+      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
@@ -41,12 +43,14 @@ export default function Register() {
         text: "Password must be 6–12 characters with letters & numbers",
         type: "error",
       });
+      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
     // ✅ NORMALIZE matric number HERE
     const matricNo = form.matricNo.trim().toUpperCase();
     const email = matricToEmail(matricNo);
+    setLoading(true);
 
     // 1️⃣ Create auth user
     const { data, error } = await supabase.auth.signUp({
@@ -56,6 +60,7 @@ export default function Register() {
 
     if (error) {
       setMessage({ text: error.message, type: "error" });
+      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
@@ -72,11 +77,13 @@ export default function Register() {
 
     if (profileError) {
       setMessage({ text: profileError.message, type: "error" });
+      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
     await supabase.auth.signOut();
 
+    setLoading(false);
     setMessage({
       text: "Registration successful 🎉 Redirecting...",
       type: "success",
@@ -151,13 +158,15 @@ export default function Register() {
 
         <Button
           type="submit"
-          className="w-full bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl transition-all"
+          className={`w-full bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-2xl transition-all`}
+          disabled={loading}
+          loading={loading}
         >
-          Register
+          {loading ? "Registering..." : "Register"}
         </Button>
         {message.text && (
           <div
-            className={`text-center text-sm font-semibold transition-all ${message.type === "error" ? "text-[red]/50" : "text-[lightgreen]"
+            className={`text-center text-sm font-semibold transition-all ${message.type === "error" ? "dark:text-red-400 text-red-500" : "text-[lightgreen]"
               }`}
           >
             {message.text}

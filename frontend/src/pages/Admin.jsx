@@ -123,8 +123,6 @@ export default function Admin() {
     }
   };
   
-  if (loading) return <AdminSkeleton />;
-  
   return (
   <div className="min-h-screen p-8 
     bg-linear-to-br 
@@ -134,101 +132,104 @@ export default function Admin() {
     <Header title="Admin" subtitle="Manage EduTrack users" />
 
     <div className="pt-36 px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-        <StatCard
-          title="Total Users"
-          value={stats.totalUsers}
-          icon={<FaUsers />}
-          active={roleFilter === "all"}
-          onClick={() => setRoleFilter("all")}
-        />
-      
-        <StatCard
-          title="Students"
-          value={stats.students}
-          icon={<FaUserGraduate />}
-          active={roleFilter === "student"}
-          onClick={() => setRoleFilter("student")}
-        />
-      
-        <StatCard
-          title="Admins"
-          value={stats.admins}
-          icon={<FaUserShield />}
-          active={roleFilter === "admin"}
-          onClick={() => setRoleFilter("admin")}
-        />
-
-      </div>
-
-      <div className="mt-8 relative">
-      
-          <FaSearch
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+      {loading ? <AdminSkeleton /> : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+            <StatCard
+              title="Total Users"
+              value={stats.totalUsers}
+              icon={<FaUsers />}
+              active={roleFilter === "all"}
+              onClick={() => setRoleFilter("all")}
+            />
+          
+            <StatCard
+              title="Students"
+              value={stats.students}
+              icon={<FaUserGraduate />}
+              active={roleFilter === "student"}
+              onClick={() => setRoleFilter("student")}
+            />
+          
+            <StatCard
+              title="Admins"
+              value={stats.admins}
+              icon={<FaUserShield />}
+              active={roleFilter === "admin"}
+              onClick={() => setRoleFilter("admin")}
+            />
+    
+          </div>
+    
+          <div className="mt-8 relative">
+          
+              <FaSearch
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+          
+              <input
+                type="text"
+                placeholder="Search by name or matric number..."
+                value={search}
+                onChange={(e)=>setSearch(e.target.value)}
+                className="
+                  w-full
+                  bg-white
+                  dark:bg-gray-800
+                  rounded-xl
+                  py-3
+                  pl-12
+                  pr-4
+                  shadow-md
+                  outline-none
+                  focus:ring-2
+                  focus:ring-[#199FB1]
+                  text-gray-600 dark:text-gray-300
+                "
+              />
+          
+          </div>
+    
+          <UserTable
+            users={users}
+            fetching={fetching}
+            isResetting={isResetting}
+            onResetPassword={(user) => {
+              setSelectedUser(user);
+              setShowModal(true);
+            }}
           />
-      
-          <input
-            type="text"
-            placeholder="Search by name or matric number..."
-            value={search}
-            onChange={(e)=>setSearch(e.target.value)}
-            className="
-              w-full
-              bg-white
-              dark:bg-gray-800
-              rounded-xl
-              py-3
-              pl-12
-              pr-4
-              shadow-md
-              outline-none
-              focus:ring-2
-              focus:ring-[#199FB1]
-              text-gray-600 dark:text-gray-300
-            "
-          />
-      
-      </div>
-
-      <UserTable
-        users={users}
-        fetching={fetching}
-        isResetting={isResetting}
-        onResetPassword={(user) => {
-          setSelectedUser(user);
-          setShowModal(true);
-        }}
-      />
-
-      <ResetPasswordModal
-          open={showModal}
-          user={selectedUser}
-          loading={isResetting}
-          onCancel={() => {
-              setShowModal(false);
+    
+          <ResetPasswordModal
+              open={showModal}
+              user={selectedUser}
+              loading={isResetting}
+              onCancel={() => {
+                  setShowModal(false);
+                  setSelectedUser(null);
+              }}
+              onConfirm={handleResetPassword}
+            />
+            
+          <ResetSuccessModal
+            open={showSuccessModal}
+            password={temporaryPassword}
+            onClose={() => {
+              setShowSuccessModal(false);
+              setTemporaryPassword("");
               setSelectedUser(null);
-          }}
-          onConfirm={handleResetPassword}
-        />
-        
-      <ResetSuccessModal
-        open={showSuccessModal}
-        password={temporaryPassword}
-        onClose={() => {
-          setShowSuccessModal(false);
-          setTemporaryPassword("");
-          setSelectedUser(null);
-        }}
-      />
-
-      <Pagination
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        onPrevious={() => setCurrentPage((p) => p - 1)}
-        onNext={() => setCurrentPage((p) => p + 1)}
-      />
+            }}
+          />
+    
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            onPrevious={() => setCurrentPage((p) => p - 1)}
+            onNext={() => setCurrentPage((p) => p + 1)}
+          />
+        </>
+      )}
     </div>
   </div>
   );

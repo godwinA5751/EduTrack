@@ -298,8 +298,6 @@ export default function Courses() {
     }
   };
 
-  if (loading) return <CoursesSkeleton />;
-
   return (
     <div className="min-h-screen p-8 
       bg-linear-to-br 
@@ -317,58 +315,60 @@ export default function Courses() {
       </div>
 
       {/* Form */}
-      <div className="grid lg:grid-cols-2 gap-6 mt-24">
-        <div className="bg-white/20 dark:bg-white/5 p-6 rounded-xl space-y-3 text-center">
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <input name="code" value={form.code} onChange={handleChange} placeholder="Course (e.g MTH101)" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
-            <input name="unit" type="number" value={form.unit} onChange={handleChange} placeholder="Unit" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
-            <select name="grade" value={form.grade} onChange={handleChange} className="input bg-white/30 dark:bg-white/10 text-white rounded-xl px-4 py-1 w-60 sm:w-40">
-              <option value="" disabled>Grade</option>
-              {Object.keys(GRADE_POINTS).map(g => (
-                <option className="text-black/60" key={g}>{g}</option>
-              ))}
-            </select>
-          </div>
-          <button disabled={isProcessing} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
-            {isProcessing ? "Adding..." : "Add Course"}
-          </button>
-          {message && <p className="text-white">{message}</p>}
-        </div>
-
-        {/* Courses */}
-        <div className="space-y-2">
-          <div className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white font-semibold">
-            <span>Courses</span>
-            <span className="text-center">Units</span>
-            <span className="text-center">Grade</span>
-            <span className="text-center">Actions</span>
-          </div>
-
-          {courses.map((c) => (
-            <div key={c.id} className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white">
-              <span>
-                {c.code}
-                {c.isCarrying && (
-                  <span className="ml-2 text-xs text-yellow-300">🔁</span>
-                )}
-              </span>
-              <span className="text-center">{c.unit}</span>
-              <span className="text-center">{c.grade}</span>
-              <span className="text-center">
-                <FaTrash
-                  onClick={() => !isProcessing && deleteCourse(c.id)}
-                  className={`
-                    mx-auto transition
-                    ${isProcessing
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer hover:text-red-400"}
-                  `}
-                />
-              </span>
+      {loading ? <CoursesSkeleton /> : (
+        <div className="grid lg:grid-cols-2 gap-6 mt-24">
+          <div className="bg-white/20 dark:bg-white/5 p-6 rounded-xl space-y-3 text-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <input name="code" value={form.code} onChange={handleChange} placeholder="Course (e.g MTH101)" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
+              <input name="unit" type="number" value={form.unit} onChange={handleChange} placeholder="Unit" className="input bg-white/30 dark:bg-white/10 text-white placeholder-white/70 rounded-xl px-4 py-1 w-60 sm:w-40" />
+              <select name="grade" value={form.grade} onChange={handleChange} className="input bg-white/30 dark:bg-white/10 text-white rounded-xl px-4 py-1 w-60 sm:w-40">
+                <option value="" disabled>Grade</option>
+                {Object.keys(GRADE_POINTS).map(g => (
+                  <option className="text-black/60" key={g}>{g}</option>
+                ))}
+              </select>
             </div>
-          ))}
+            <button disabled={isProcessing} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
+              {isProcessing ? "Adding..." : "Add Course"}
+            </button>
+            {message && <p className="text-white">{message}</p>}
+          </div>
+  
+          {/* Courses */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white font-semibold">
+              <span>Courses</span>
+              <span className="text-center">Units</span>
+              <span className="text-center">Grade</span>
+              <span className="text-center">Actions</span>
+            </div>
+  
+            {courses.map((c) => (
+              <div key={c.id} className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white">
+                <span>
+                  {c.code}
+                  {c.isCarrying && (
+                    <span className="ml-2 text-xs text-yellow-300">🔁</span>
+                  )}
+                </span>
+                <span className="text-center">{c.unit}</span>
+                <span className="text-center">{c.grade}</span>
+                <span className="text-center">
+                  <FaTrash
+                    onClick={() => !isProcessing && deleteCourse(c.id)}
+                    className={`
+                      mx-auto transition
+                      ${isProcessing
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer hover:text-red-400"}
+                    `}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

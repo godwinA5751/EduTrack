@@ -116,7 +116,6 @@ export default function Levels() {
   }, [academicCourses]);
 
   /* ───────── UI ───────── */
-  if (loading) return <LevelsSkeleton />;
 
   return (
     <div className="min-h-screen p-8 
@@ -126,31 +125,33 @@ export default function Levels() {
 
       <Header title="Levels" subtitle="Your academic levels overview" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-36 px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">
-        {levels.map((lvl) => {
-          const stats = levelStats[lvl.id] || { units: 0, points: 0 };
-          const cgpa = stats.units ? stats.points / stats.units : 0;
-
-          return (
-            <LevelCard
-              key={lvl.id}
-              level={lvl.level}
-              gpa={cgpa} // carryover-aware CGPA
-              onClick={() =>
-                navigate("/semester", { state: { level: lvl.level } })
-              }
+      {loading ? <LevelsSkeleton /> : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-36 px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">
+          {levels.map((lvl) => {
+            const stats = levelStats[lvl.id] || { units: 0, points: 0 };
+            const cgpa = stats.units ? stats.points / stats.units : 0;
+  
+            return (
+              <LevelCard
+                key={lvl.id}
+                level={lvl.level}
+                gpa={cgpa} // carryover-aware CGPA
+                onClick={() =>
+                  navigate("/semester", { state: { level: lvl.level } })
+                }
+              />
+            );
+          })}
+  
+          {userId && (
+            <AddLevelButton
+              userId={userId}
+              levels={levels}
+              setLevels={setLevels}
             />
-          );
-        })}
-
-        {userId && (
-          <AddLevelButton
-            userId={userId}
-            levels={levels}
-            setLevels={setLevels}
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

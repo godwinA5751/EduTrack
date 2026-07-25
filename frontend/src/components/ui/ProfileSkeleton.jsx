@@ -7,9 +7,6 @@ export default function ProfileSkeleton() {
   bg-linear-to-br 
   from-[#A5D1E1] via-[#199FB1] to-[#0D5C75]
   dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden px-6 pt-6">
-      {/* Header skeleton */}
-      <Skeleton className="w-1/4 h-10 mb-6 rounded-3xl" />
-
       <div className="max-w-3xl mx-auto mt-6 bg-white/20 backdrop-blur-md rounded-3xl p-8 flex flex-col gap-6">
         {/* Avatar skeleton */}
         <div className="flex items-center gap-4">
