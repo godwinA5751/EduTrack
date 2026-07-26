@@ -16,7 +16,8 @@ export default function Courses() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ code: "", unit: "", grade: "" });
   const [message, setMessage] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   /* ───────────────────────── GUARD ───────────────────────── */
 
@@ -90,9 +91,9 @@ export default function Courses() {
       point: GRADE_POINTS[form.grade],
     };
 
-    if (isProcessing) return;
+    if (isAdding) return;
    
-     setIsProcessing(true);
+     setIsAdding(true);
 
 
     try {
@@ -120,7 +121,7 @@ export default function Courses() {
       setMessage("Failed to add course");
       setTimeout(() => setMessage(""), 2500);
     } finally {
-      setIsProcessing(false);
+      setIsAdding(false);
     }
   };
 
@@ -133,9 +134,9 @@ export default function Courses() {
     // 2. Optimistically update UI
     setCourses((prev) => prev.filter((course) => course.id !== id));
 
-    if (isProcessing) return;
+    if (isDeleting) return;
     
-    setIsProcessing(true);
+    setIsDeleting(true);
     try {
       // 3. Delete from DB
       const { error } = await supabase
@@ -154,7 +155,7 @@ export default function Courses() {
       // 5. Rollback UI if error
       setCourses(previousCourses);
     } finally {
-      setIsProcessing(false);
+      setIsDeleting(false);
     }
   };
 
@@ -328,8 +329,8 @@ export default function Courses() {
                 ))}
               </select>
             </div>
-            <button disabled={isProcessing} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
-              {isProcessing ? "Adding..." : "Add Course"}
+            <button disabled={isAdding || isDeleting} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
+              {isAdding ? "Adding..." : "Add Course"}
             </button>
             {message && <p className="text-white">{message}</p>}
           </div>
@@ -355,10 +356,10 @@ export default function Courses() {
                 <span className="text-center">{c.grade}</span>
                 <span className="text-center">
                   <FaTrash
-                    onClick={() => !isProcessing && deleteCourse(c.id)}
+                    onClick={() => (!isDeleting || !isAdding) && deleteCourse(c.id)}
                     className={`
                       mx-auto transition
-                      ${isProcessing
+                      ${isDeleting || isAdding
                         ? "opacity-50 cursor-not-allowed"
                         : "cursor-pointer hover:text-red-400"}
                     `}
