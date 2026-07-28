@@ -1,5 +1,6 @@
+import { FaTrash } from "react-icons/fa";
 
-export default function LevelCard({ level, gpa, onClick }) {
+export default function LevelCard({ level, gpa, onClick, onDelete, isDeleting, canDelete }) {
 
   return (
     <div className="rounded-3xl bg-white dark:bg-gray-800 shadow-md p-6 hover:shadow-lg transition h-50">
@@ -21,14 +22,21 @@ export default function LevelCard({ level, gpa, onClick }) {
           / 5.00
         </span>
       </div>
-      <button
-        onClick={onClick}
-        className="
-          mt-10 w-full py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
-          dark:bg-[#0F3A47]/40 dark:text-[#7FD6E3] font-medium hover:bg-[#A7EBF2]/60 dark:hover:bg-[#0F3A47]/60 transition cursor-pointer"
-      >
-        {gpa === 0.0 ? "Get Started →" : "View Semesters →"}
-      </button>
+      <div className="flex justify-end gap-12 mt-7">
+        {canDelete && (
+          <button onClick={onDelete} className={`text-[#199FB1] hover:text-[#199FB1]/80 transition ${isDeleting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`} disabled={isDeleting}>
+            <FaTrash size={20} />
+          </button>
+        )}
+        <button
+          onClick={onClick}
+          className={`${canDelete ? "w-90" : "w-full"}
+            py-2 rounded-xl bg-[#A7EBF2]/40 text-[#0D5C75]
+            dark:bg-[#0F3A47]/40 dark:text-[#7FD6E3] font-medium hover:bg-[#A7EBF2]/60 dark:hover:bg-[#0F3A47]/60 transition delay-200 cursor-pointer`}
+        >
+          {gpa === 0.0 ? "Get Started →" : "View Semesters →"}
+        </button>
+      </div>
     </div>
   );
 }

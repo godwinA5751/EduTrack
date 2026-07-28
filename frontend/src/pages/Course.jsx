@@ -1,23 +1,77 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaTrash } from "react-icons/fa";
-import { supabase } from "../lib/supabaseClient";
+import { FaArrowLeft, FaTrash, FaEdit } from "react-icons/fa";
 import CoursesSkeleton from "../components/ui/CoursesSkeleton";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCourses } from "../queries/courseQueries";
+import {
+  buildCourse,
+  validateCourse,
+  GRADE_POINTS,
+  refreshAcademicData,
+  addCourse,
+  deleteCourse,
+  updateCourse,
+} from "../services/academic";
+import EditCourseModal from "../components/cgpa/EditCourseModal";
 
-const GRADE_POINTS = { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 };
 
 export default function Courses() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const { level, semester, semesterId } = location.state || {};
 
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
   const [form, setForm] = useState({ code: "", unit: "", grade: "" });
   const [message, setMessage] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const showMessage = (text) => {
+      setMessage(text);
+      setTimeout(() => setMessage(""), 2500);
+  };
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  const [editForm, setEditForm] = useState({
+    code: "",
+    unit: "",
+    grade: "",
+  });
+
+  const {
+    data: courses = [],
+    isLoading,
+  } = useQuery({
+    queryKey: ["courses", semesterId],
+    queryFn: () => getCourses(semesterId),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  const openEditModal = (course) => {
+    setSelectedCourse(course);
+  
+    setEditForm({
+      code: course.code,
+      unit: course.unit,
+      grade: course.grade,
+    });
+  
+    setShowEditModal(true);
+  };
+
+  const handleEditChange = (e) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
 
   /* ───────────────────────── GUARD ───────────────────────── */
 
@@ -26,100 +80,54 @@ export default function Courses() {
       navigate("/levels");
     }
   }, [semesterId, level, semester, navigate]);
-
-  /* ───────────────────────── FETCH COURSES (SINGLE SOURCE) ───────────────────────── */
-
-  const fetchCourses = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("courses")
-      .select("*")
-      .eq("semester_id", semesterId)
-      .order("created_at", { ascending: true });
-
-    if (!error) {
-      setCourses(data || []);
-    }
-  }, [semesterId]);
-
-  useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/login");
-        return;
-      }
-
-      await fetchCourses();
-      setLoading(false);
-    };
-
-    init();
-  }, [fetchCourses, navigate]);
-
+  
   /* ───────────────────────── HANDLERS ───────────────────────── */
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
-  function normalizeCode(code) {
-    return code.toUpperCase().replace(/(\D)(\d+)/, '$1 $2');
-  }
 
-  const addCourse = async () => {
-    if (!form.code || !form.unit || !form.grade) {
-      setMessage("Fill all fields");
-      setTimeout(() => setMessage(""), 2500);
+  const addCourseHandler = async () => {
+    const validationError = validateCourse(form);
+    if (validationError) {
+      showMessage(validationError);
       return;
     }
 
-    const pattern = /^[A-Z]{3}\s?\d{3}$/i;
-
-    const cleanedCode = normalizeCode(form.code);
-
-    if (!pattern.test(cleanedCode.replace(" ", ""))) {
-      setMessage("Invalid course code (e.g MTH101)");
-      setTimeout(() => setMessage(""), 2500);
+    const normalizedCode = form.code.trim().toUpperCase();
+    
+    const courseExists = courses.some(
+      (course) =>
+        course.code.trim().toUpperCase() === normalizedCode
+    );
+    
+    if (courseExists) {
+      showMessage("Course already exists in this semester.");
       return;
     }
 
-    const newCourse = {
-      semester_id: semesterId,
-      code: cleanedCode,
-      unit: Number(form.unit),
-      grade: form.grade,
-      point: GRADE_POINTS[form.grade],
-    };
-
+    const newCourse = buildCourse(form, semesterId);
     if (isAdding) return;
-   
-     setIsAdding(true);
 
+    setIsAdding(true);
 
     try {
-      // 1. Insert into DB
-      const { data, error } = await supabase
-        .from("courses")
-        .insert(newCourse)
-        .select()
-        .single();
+      await addCourse(newCourse)
 
-      if (error) throw error;
-
-      // 2. Update UI immediately
-      const updatedCourses = [...courses, data];
-      setCourses(updatedCourses);
-
-      // 3. Reset form
       setForm({ code: "", unit: "", grade: "" });
+     
+      await refreshAcademicData({
+        queryClient,
+        semesterId,
+        level,
+      });
 
-      // 4. 🔥 Recalculate GPA (VERY IMPORTANT)
-      await calculateAndPersistGPA();
+      showMessage("Course added successfully ✅");
 
     } catch (err) {
       console.error("Add failed:", err);
-      setMessage("Failed to add course");
-      setTimeout(() => setMessage(""), 2500);
+      showMessage("Failed to add course");
     } finally {
       setIsAdding(false);
     }
@@ -127,175 +135,69 @@ export default function Courses() {
 
   /* ───────────────────────── DELETE COURSE (OPTIMISTIC) ───────────────────────── */
 
-  const deleteCourse = async (id) => {
-    // 1. Save current state (for rollback)
-    const previousCourses = [...courses];
-
-    // 2. Optimistically update UI
-    setCourses((prev) => prev.filter((course) => course.id !== id));
-
+  const deleteCourseHandler = async (id) => {
     if (isDeleting) return;
-    
+  
     setIsDeleting(true);
+  
     try {
-      // 3. Delete from DB
-      const { error } = await supabase
-        .from("courses")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
-      // 4. 🔥 Recalculate GPA AFTER successful delete
-      await calculateAndPersistGPA();
-
+      await deleteCourse(id);
+      await refreshAcademicData({
+        queryClient,
+        semesterId,
+        level,
+      });
+      showMessage("Course deleted successfully ✅");
+  
     } catch (err) {
-      console.error("Delete failed:", err);
-
-      // 5. Rollback UI if error
-      setCourses(previousCourses);
+      console.error(err);
+      showMessage("Failed to delete course");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  /* ───────────────────────── GPA + CGPA ───────────────────────── */
+  const updateCourseHandler = async () => {
+    const validationError = validateCourse(editForm);
+  
+    if (validationError) {
+      showMessage(validationError);
+      return;
+    }
 
-  const calculateAndPersistGPA = async () => {
+    const normalizedCode = editForm.code.trim().toUpperCase();
+    
+    const courseExists = courses.some(
+      (course) =>
+        course.id !== selectedCourse.id &&
+        course.code.trim().toUpperCase() === normalizedCode
+    );
+    
+    if (courseExists) {
+      showMessage("Course already exists in this semester.");
+      return;
+    }
+  
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      /* ───────────── 1. GET ALL COURSES FOR USER ───────────── */
-
-      const { data: allCourses, error } = await supabase
-        .from("courses")
-        .select(`
-          id,
-          code,
-          unit,
-          point,
-          created_at,
-          semester_id,
-          semesters:semester_id(
-            id,
-            level_id,
-            levels:level_id(user_id)
-          )
-        `)
-        .eq("semesters.levels.user_id", session.user.id);
-
-      if (error) throw error;
-
-      /* ───────────── 2. NORMALIZE FUNCTION ───────────── */
-
-      const normalize = (code) =>
-        code.toUpperCase().replace(/\s+/g, "");
-
-      /* ───────────── 3. GROUP BY COURSE CODE ───────────── */
-
-      const grouped = {};
-
-      allCourses.forEach((c) => {
-        const key = normalize(c.code);
-
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(c);
+      setIsUpdating(true);
+  
+      await updateCourse(selectedCourse.id, editForm);
+  
+      await refreshAcademicData({
+        queryClient,
+        semesterId,
+        level,
       });
-
-      /* ───────────── 4. RESOLVE BEST ATTEMPT ───────────── */
-
-      const resolvedCourses = [];
-
-      Object.values(grouped).forEach((attempts) => {
-
-        // Best grade attempt
-        const best = attempts.reduce((prev, curr) =>
-          prev.point > curr.point ? prev : curr
-        );
-
-        // First time course was taken
-        const original = attempts.reduce((prev, curr) =>
-          new Date(prev.created_at) < new Date(curr.created_at)
-            ? prev
-            : curr
-        );
-
-        resolvedCourses.push({
-          ...original,
-          point: best.point,
-          isCarrying: attempts.some(a => a.point === 0)
-        });
-
-      });
-
-      /* ───────────── 5. CALCULATE GPA PER LEVEL ───────────── */
-
-      const levelMap = {};
-
-      resolvedCourses.forEach((c) => {
-        const levelId = c.semesters.level_id;
-
-        if (!levelMap[levelId]) {
-          levelMap[levelId] = { points: 0, units: 0 };
-        }
-
-        levelMap[levelId].points += c.point * c.unit;
-        levelMap[levelId].units += c.unit;
-      });
-
-      /* ───────────── 6. UPDATE LEVEL CGPA ───────────── */
-
-      for (const levelId in levelMap) {
-        const { points, units } = levelMap[levelId];
-
-        const cgpa = units ? points / units : 0;
-
-        await supabase
-          .from("levels")
-          .update({ cgpa })
-          .eq("id", levelId);
-      }
-
-      /* ───────────── 7. UPDATE CURRENT SEMESTER GPA ───────────── */
-
-      // 🔥 GROUP BY SEMESTER
-      const semesterMap = {};
-
-      resolvedCourses.forEach((c) => {
-        const semId = c.semester_id;
-
-        if (!semesterMap[semId]) {
-          semesterMap[semId] = { points: 0, units: 0 };
-        }
-
-        semesterMap[semId].points += c.point * c.unit;
-        semesterMap[semId].units += c.unit;
-      });
-
-      // 🔥 UPDATE EACH SEMESTER GPA
-      for (const semId in semesterMap) {
-        const { points, units } = semesterMap[semId];
-        const gpa = units ? points / units : 0;
-
-        await supabase
-          .from("semesters")
-          .update({
-            gpa,
-            total_units: units,
-          })
-          .eq("id", semId);
-      }
-
-      /* ───────────── 8. SUCCESS MESSAGE ───────────── */
-
-      setMessage("GPA updated successfully ✅");
-      setTimeout(() => setMessage(""), 2500);
-
+  
+      showMessage("Course updated successfully ✅");
+  
+      setShowEditModal(false);
+      setSelectedCourse(null);
     } catch (err) {
-      console.error("GPA ERROR:", err);
-      setMessage("Failed to calculate GPA");
-      setTimeout(() => setMessage(""), 2500);
+      console.error(err);
+      showMessage("Failed to update course");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -316,7 +218,7 @@ export default function Courses() {
       </div>
 
       {/* Form */}
-      {loading ? <CoursesSkeleton /> : (
+      {isLoading ? <CoursesSkeleton /> : (
         <div className="grid lg:grid-cols-2 gap-6 mt-24">
           <div className="bg-white/20 dark:bg-white/5 p-6 rounded-xl space-y-3 text-center">
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -329,7 +231,7 @@ export default function Courses() {
                 ))}
               </select>
             </div>
-            <button disabled={isAdding || isDeleting} onClick={addCourse} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
+            <button disabled={isAdding || isDeleting} onClick={addCourseHandler} className="btn bg-white/20 dark:bg-white/5 px-4 py-2 cursor-pointer rounded-xl text-white hover:bg-white/30 dark:hover:bg-white/10 transition disabled:opacity-60 disabled:cursor-not-allowed">
               {isAdding ? "Adding..." : "Add Course"}
             </button>
             {message && <p className="text-white">{message}</p>}
@@ -354,14 +256,28 @@ export default function Courses() {
                 </span>
                 <span className="text-center">{c.unit}</span>
                 <span className="text-center">{c.grade}</span>
-                <span className="text-center">
-                  <FaTrash
-                    onClick={() => (!isDeleting || !isAdding) && deleteCourse(c.id)}
+                <span className="flex justify-center gap-4">
+                  <FaEdit
+                    onClick={() => openEditModal(c)}
                     className={`
-                      mx-auto transition
-                      ${isDeleting || isAdding
-                        ? "opacity-50 cursor-not-allowed"
-                        : "cursor-pointer hover:text-red-400"}
+                      transition
+                      ${
+                        isDeleting || isAdding
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer hover:text-blue-300"
+                      }
+                    `}
+                  />
+                
+                  <FaTrash
+                    onClick={() => deleteCourseHandler(c.id)}
+                    className={`
+                      transition
+                      ${
+                        isDeleting || isAdding
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer hover:text-red-400"
+                      }
                     `}
                   />
                 </span>
@@ -370,6 +286,22 @@ export default function Courses() {
           </div>
         </div>
       )}
+      <EditCourseModal
+        open={showEditModal}
+        form={editForm}
+        loading={isUpdating}
+        onChange={handleEditChange}
+        onCancel={() => {
+          setShowEditModal(false);
+          setSelectedCourse(null);
+          setEditForm({
+            code: "",
+            unit: "",
+            grade: "",
+          });
+        }}
+        onConfirm={updateCourseHandler}
+      />
     </div>
   );
 }

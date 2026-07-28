@@ -13,11 +13,11 @@ export default function ResetPasswordModal({
     <>
       <div
         className="fixed inset-0 bg-black/40 z-40"
-        onClick={onCancel}
       />
 
-      <div className="fixed inset-0 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-105 p-8">
+      <div 
+        onClick={onCancel} className="fixed inset-0 flex items-center justify-center z-50">
+        <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-105 p-8">
 
           <div className="flex justify-between items-center mb-6">
 
@@ -53,7 +53,7 @@ export default function ResetPasswordModal({
 
             <button
               onClick={onCancel}
-              className="px-5 py-2 rounded-xl bg-gray-200"
+              className="px-5 py-2 rounded-xl bg-gray-200 cursor-pointer"
             >
               Cancel
             </button>
@@ -61,7 +61,7 @@ export default function ResetPasswordModal({
             <button
               disabled={loading}
               onClick={onConfirm}
-              className="px-5 py-2 rounded-xl bg-red-500 text-white"
+              className="px-5 py-2 rounded-xl bg-red-500 text-white cursor-pointer"
             >
               {loading ? "Resetting..." : "Reset Password"}
             </button>

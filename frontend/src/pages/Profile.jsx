@@ -1,149 +1,50 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
 import Header from "../components/layout/Header";
 import ProfileSkeleton from "../components/ui/ProfileSkeleton";
+import { useQuery } from "@tanstack/react-query";
+import { getProfile } from "../queries/profileQueries";
+import { calculateProfileStats } from "../services/academic";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);
-  const [academic, setAcademic] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const {
+    data,
+    // isLoading,
+    isPending
+  } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+    staleTime: 12 * 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  });
+
+  const profile = data?.profile ?? null;
+  const academic = data?.levels ?? [];
 
   useEffect(() => {
-    const fetchProfileAndAcademics = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-          navigate("/login");
-          return;
-        }
-
-        const userId = session.user.id;
-
-        const [profileRes, levelsRes] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id, full_name, matric_no, registered_level, current_level")
-            .eq("id", userId)
-            .single(),
-          supabase
-            .from("levels")
-            .select(`
-              id,
-              level,
-              semesters (
-                id,
-                semester,
-                courses (
-                  code,
-                  unit,
-                  point,
-                  created_at
-                )
-              )
-            `)
-            .eq("user_id", userId)
-        ]);
-
-        if (profileRes.error) throw profileRes.error;
-        if (levelsRes.error) throw levelsRes.error;
-
-        setProfile(profileRes.data);
-        setAcademic(levelsRes.data || []);
-      } catch {
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfileAndAcademics();
-  }, [navigate]);
+    if (!isPending && !profile) {
+      navigate("/login");
+    }
+  }, [isPending, profile, navigate]);
 
   // ✅ Use carryover-aware calculation for stats
-  const stats = useMemo(() => {
-    if (!academic.length) {
-      return {
-        levels: 0,
-        semesters: 0,
-        units: 0,
-        points: 0,
-        cgpa: 0
-      };
-    }
-    const normalize = (code) => code?.toUpperCase().replace(/\s+/g, "") || "";
+  const stats = calculateProfileStats(academic);
 
-    // 1️⃣ Flatten all courses with level & semester info
-    const allCourses = [];
-    academic.forEach((lvl) => {
-      lvl.semesters?.forEach((sem) => {
-        sem.courses?.forEach((course) => {
-          allCourses.push({
-            ...course,
-            levelId: lvl.id,
-            semesterId: sem.id,
-          });
-        });
-      });
-    });
+  const currentLevel =
+    academic.length > 0
+      ? Math.max(...academic.map((l) => l.level))
+      : "Not Started";
 
-    // 2️⃣ Group by normalized course code
-    const grouped = {};
-    allCourses.forEach((c) => {
-      const code = normalize(c.code);
-      if (!grouped[code]) grouped[code] = [];
-      grouped[code].push(c);
-    });
-
-    // 3️⃣ Resolve best attempt for each course (carryover logic)
-    const resolved = [];
-    Object.values(grouped).forEach((attempts) => {
-      // Sort by point descending
-      const best = attempts.reduce((a, b) =>
-        (a.point || 0) > (b.point || 0) ? a : b
-      );
-
-      // Keep unit from the first attempt (original semester)
-      const original = attempts.reduce((a, b) =>
-        new Date(a.created_at) < new Date(b.created_at) ? a : b
-      );
-
-      resolved.push({
-        ...original,
-        point: best.point || 0, // replace old F with passed grade
-      });
-    });
-
-    // 4️⃣ Sum totals
-    let totalUnits = 0;
-    let totalPoints = 0;
-    resolved.forEach((c) => {
-      const unit = Number(c.unit) || 0;
-      const point = Number(c.point) || 0;
-      totalUnits += unit;
-      totalPoints += unit * point;
-    });
-
-    // 5️⃣ Levels & Semesters count
-    const totalLevels = academic.length;
-    let totalSemesters = 0;
-    academic.forEach((lvl) => {
-      totalSemesters += lvl.semesters?.length || 0;
-    });
-
-    const cumulativeCGPA = totalUnits ? totalPoints / totalUnits : 0;
-
-    return {
-      levels: totalLevels,
-      semesters: totalSemesters,
-      units: totalUnits,
-      points: totalPoints,
-      cgpa: cumulativeCGPA,
-    };
-  }, [academic]);
-  
+  if (isPending) {
+    return (
+      <div>
+        <Header title="Profile" subtitle="Your academic summary" className="mb-20" />
+        <ProfileSkeleton />
+      </div>
+    );
+  }
   if (!profile) return null;
 
   const initial = profile.full_name?.charAt(0) || "?";
@@ -170,9 +71,8 @@ export default function Profile() {
       dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22] min-h-screen overflow-hidden">
       <Header title="Profile" subtitle="Your academic summary" />
 
-      {loading ? <ProfileSkeleton /> : (
         <div className="px-6 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide scroll-smooth">
-          <div className="max-w-3xl mx-auto mt-50 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
+          <div className="max-w-3xl mx-auto mt-40 lg:my-50 md:mt-45 bg-white/20 dark:bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-lg flex flex-col gap-6">
             {/* Avatar */}
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-[#A7EBF2]/50 dark:bg-[#0B1F2A] flex items-center justify-center text-3xl font-bold text-white">
@@ -188,18 +88,16 @@ export default function Profile() {
   
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <Stat label="Current Level" value={profile.current_level} />
+              <Stat label="Current Level" value={currentLevel} />
               <Stat label="Cumulative GPA" value={stats.cgpa.toFixed(2)} />
               <Stat label="Levels" value={stats.levels} />
               <Stat label="Semesters" value={stats.semesters} />
               <Stat label="Total Units" value={stats.units} />
               <Stat label="Total Points" value={stats.points} />
               <Stat label="Class" value={degreeClass} />
-              <Stat label="Registered Level" value={profile.registered_level} />
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
 
-const AddLevelButton = ({ levels, setLevels, userId }) => {
+const AddLevelButton = ({ levels, userId, levelStats }) => {
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState({ text: "", type: "" });
   const [showPrompt, setShowPrompt] = useState(false);
   const [graduatePrompt, setGraduatePrompt] = useState(false);
@@ -49,7 +51,13 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
       optimistic: true,
     };
 
-    setLevels((prev) => [...prev, optimisticLevel]);
+    const previousLevels =
+      queryClient.getQueryData(["levels", userId]);
+    
+    queryClient.setQueryData(
+      ["levels", userId],
+      (old = []) => [...old, optimisticLevel]
+    );
 
     try {
       const { data: realLevel, error } = await supabase
@@ -65,23 +73,42 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
       if (error) throw error;
 
       // 🔁 Replace optimistic level with real one
-      setLevels((prev) =>
-        prev.map((lvl) => (lvl.id === optimisticLevel.id ? realLevel : lvl))
+      queryClient.setQueryData(
+        ["levels", userId],
+        (old = []) =>
+          old.map((lvl) =>
+            lvl.id === optimisticLevel.id
+              ? {
+                  ...realLevel,
+                  semesters: [],
+                }
+              : lvl
+          )
       );
 
-      // 🧠 Background update (non-blocking)
-      supabase
-        .from("profiles")
-        .update({ current_level: levelValue })
-        .eq("id", userId);
+      queryClient.invalidateQueries({
+        queryKey: ["levels"],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard-cgpa"],
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ["profile"],
+      });
 
       showTempMessage(`Level ${levelValue} added successfully!`);
+      queryClient.invalidateQueries({
+        queryKey: ["levels", userId],
+      });
     } catch (err) {
       console.error(err);
 
       // ❌ Rollback optimistic update
-      setLevels((prev) =>
-        prev.filter((lvl) => lvl.id !== optimisticLevel.id)
+      queryClient.setQueryData(
+        ["levels", userId],
+        previousLevels
       );
 
       showTempMessage("Failed to add level", "error");
@@ -102,10 +129,11 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
     }
 
     const lastLevel = levels[levels.length - 1];
-
-    if (lastLevel.cgpa === 0) {
+    const stats = levelStats[lastLevel.id];
+    
+    if (!stats || stats.units === 0 || stats.gpa <= 0) {
       showTempMessage(
-        `You must calculate CGPA for ${lastLevel.level} Level first.`,
+        `Complete ${lastLevel.level} Level before adding another level.`,
         "error"
       );
       return;
@@ -180,6 +208,10 @@ const AddLevelButton = ({ levels, setLevels, userId }) => {
                     .from("profiles")
                     .update({ graduated: true })
                     .eq("id", userId);
+
+                  queryClient.invalidateQueries({
+                    queryKey: ["profile"],
+                  });
 
                   if (!error) {
                     setIsGraduated(true);

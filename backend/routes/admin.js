@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../supabase.js";
 import { verifyAdmin } from "../middleware/auth.js";
 import { generateTempPassword } from "../utils/password.js";
+import adminCache from "../cache/adminCache.js";
+import { getAdminUsers } from "../services/adminService.js";
+import { CacheKeys } from "../cache/cacheKey.js";
 
 const router = Router();
 router.use(verifyAdmin);
@@ -16,71 +19,33 @@ router.get("/users", async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit) || 10, 1);
-    const search = req.query.search?.trim() || "";
+    const search = (req.query.search ?? "").trim().toLowerCase();;
     const role = req.query.role || "all";
-
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    // Build users query
-    let usersQuery = supabase
-      .from("profiles")
-      .select(
-        `
-          id,
-          full_name,
-          matric_no,
-          role,
-          must_change_password
-        `,
-        { count: "exact" }
-      )
-      .order("full_name", { ascending: true });
-
-    // Search by full name or matric number
-    if (search) {
-      usersQuery = usersQuery.or(
-        `full_name.ilike.%${search}%,matric_no.ilike.%${search}%`
-      );
+    
+    const cacheKey = CacheKeys.users({
+      page,
+      limit,
+      role,
+      search,
+    });
+    
+    const cached = adminCache.get(cacheKey);
+    
+    if (cached) {
+        return res.json(cached);
     }
-
-    if (role !== "all") {
-      usersQuery = usersQuery.eq("role", role);
-    }
-
-    const {
-      data: users,
-      error: usersError,
-      count: totalUsers,
-    } = await usersQuery.range(from, to);
-
-    if (usersError) throw usersError;
-
-    // Get role statistics
-    const { data: roles, error: rolesError } = await supabase
-      .from("profiles")
-      .select("role");
-
-    if (rolesError) throw rolesError;
-
-    const stats = {
-      totalUsers: roles.length,
-      students: roles.filter((u) => u.role === "student").length,
-      admins: roles.filter((u) => u.role === "admin").length,
-    };
-
-    return res.status(200).json({
-      success: true,
-      stats,
-      users,
-      pagination: {
+    
+    const response = await getAdminUsers({
         page,
         limit,
-        total: totalUsers,
-        totalPages: Math.ceil(totalUsers / limit),
-      },
+        search,
+        role,
     });
-
+    
+    adminCache.set(cacheKey, response);
+    
+    return res.json(response);
+    
   } catch (err) {
     console.error(err);
 
@@ -151,6 +116,7 @@ router.post("/reset-password", async (req, res) => {
       .eq("id", profileId);
 
     if (updateError) throw updateError;
+    adminCache.flushAll();
 
     // Audit log (for now)
     console.log(
@@ -169,6 +135,67 @@ router.post("/reset-password", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: err.message,
+    });
+  }
+});
+
+router.delete("/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting yourself
+    if (req.user.id === id) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot delete your own account.",
+      });
+    }
+
+    // Check profile exists
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Delete from Supabase Auth
+    const { error: authError } =
+      await supabaseAdmin.auth.admin.deleteUser(id);
+
+    // Ignore if auth user is already missing
+    if (authError && authError.code !== "user_not_found") {
+      throw authError;
+    }
+
+    // Delete profile
+    const { error: deleteError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+    adminCache.flushAll();
+
+    return res.json({
+      success: true,
+      message: "User deleted successfully.",
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to delete user.",
     });
   }
 });

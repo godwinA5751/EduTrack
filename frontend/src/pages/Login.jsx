@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
 import { supabase } from "../lib/supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 const matricToEmail = (matricNo) =>
   `${matricNo.replace(/\W+/g, "").toLowerCase()}@edutrack.app`;
 
 export default function Login() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -54,24 +56,24 @@ export default function Login() {
       // 3️⃣ Fetch profile
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("must_change_password")
         .eq("id", userId)
         .single();
-
+      
       if (profileError) {
         setMessage({ text: "Profile not found", type: "error" });
         return;
       }
-
-      // ✅ Optional (temporary, until dashboard fully uses Supabase)
-      localStorage.setItem("currentUser", JSON.stringify(profile));
-
-      if (profile.must_change_password) {
-        navigate("/change-password");
-        return;
-      }
       
-      navigate("/dashboard");
+      await queryClient.invalidateQueries({
+        queryKey: ["current-user"],
+      });
+      
+      navigate(
+        profile.must_change_password
+          ? "/change-password"
+          : "/dashboard"
+      );
     } catch (err) {
       setMessage({ text: `${err}Something went wrong`, type: "error" });
     } finally {

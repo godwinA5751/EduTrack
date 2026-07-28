@@ -1,15 +1,16 @@
-import { FaKey } from "react-icons/fa";
+import { FaKey, FaTrash } from "react-icons/fa";
 
 export default function UserTable({
   users,
   onResetPassword,
-  isResetting,
+  onDeleteUser,
+  isResetting
 }) {
   return (
     <div className="mt-8 overflow-hidden rounded-3xl bg-white dark:bg-gray-800 shadow-md">
       <div className="overflow-x-auto">
 
-       <table className="min-w-[700px] w-full">
+       <table className="min-w-175 w-full">
         <thead className="bg-[#199FB1] text-white">
           <tr>
             <th className="px-6 py-4 text-left">Name</th>
@@ -58,28 +59,45 @@ export default function UserTable({
                   </span>
                 </td>
 
-                <td className="px-6 py-4 text-center">
-                  <button
-                    disabled={isResetting}
-                    onClick={() => onResetPassword(user)}
-                    className="
-                      px-4 py-2
-                      rounded-xl
-                      bg-[#199FB1]
-                      text-white
-                      hover:bg-[#0D5C75]
-                      disabled:opacity-50
-                      transition
-                      cursor-pointer
-                      flex
-                      items-center
-                      justify-center
-                      gap-2
-                    "
-                  >
-                    <FaKey />
-                    <span>Reset</span>
-                  </button>
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      title="Reset Password"
+                      disabled={isResetting}
+                      onClick={() => onResetPassword(user)}
+                      className="
+                        h-10 w-10
+                        rounded-xl
+                        bg-[#199FB1]
+                        text-white
+                        hover:bg-[#0D5C75]
+                        disabled:opacity-50
+                        flex items-center justify-center
+                        transition
+                        cursor-pointer
+                      "
+                    >
+                      <FaKey />
+                    </button>
+                  
+                    <button
+                      title="Delete User"
+                      onClick={() => onDeleteUser(user)}
+                      className="
+                        h-10 w-10
+                        rounded-xl
+                        bg-red-500
+                        text-white
+                        hover:bg-red-800
+                        disabled:opacity-50
+                        flex items-center justify-center
+                        transition
+                        cursor-pointer
+                      "
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))

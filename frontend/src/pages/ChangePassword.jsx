@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import toast from "react-hot-toast";
 import Header from "../components/layout/Header";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ChangePassword() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
+    
     if (!password || !confirm) {
       return setMessage({ text: "Please fill all fields", type: "error" });
     }
@@ -32,39 +37,46 @@ export default function ChangePassword() {
     }
 
     try {
-      // 1️⃣ Update password
+      // 1 Update password
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-
-      // 2️⃣ Get current session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
       
-        // 3️⃣ Clear must_change_password flag
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            must_change_password: false,
-          })
-          .eq("id", session.user.id);
+      // 2 Refresh the auth session
+      const { data: refreshed } = await supabase.auth.refreshSession();
       
-        if (profileError) throw profileError;
+      if (!refreshed.session) {
+        throw new Error("Failed to refresh session");
+      }
+      
+      // 3 Get the refreshed session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      // 4 Clear must_change_password flag
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          must_change_password: false,
+        })
+        .eq("id", session.user.id);
+      
+      if (profileError) throw profileError;
 
-      setMessage({
-        text: "Password updated successfully.",
-        type: "success",
+      // 5 Refresh cached current user
+      await queryClient.invalidateQueries({
+        queryKey: ["current-user"],
       });
-
-      // 2️⃣ Small delay so user sees message
-      setTimeout(async () => {
-        navigate("/dashboard", { replace: true });
-      }, 3000);
+      
+      await queryClient.refetchQueries({
+        queryKey: ["current-user"],
+      });
+      
+      toast.success("Password updated successfully.");
+      
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      setMessage({
-        text: err.message || "Failed to update password",
-        type: "error",
-      });
+      if (err) toast.error("Failed to update password");
     }
   };
 
@@ -125,10 +137,11 @@ export default function ChangePassword() {
         )}
 
         <button
+          disabled={loading}
           type="submit"
           className="bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 text-white py-3 rounded-xl font-semibold cursor-pointer"
         >
-          Update Password
+          {loading ? "Updating..." : "Update Password"}
         </button>
       </form>
     </div>

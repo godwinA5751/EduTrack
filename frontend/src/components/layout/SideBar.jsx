@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import Logo from "../../asset/logo.PNG";
 import {
   FaHome,
@@ -12,6 +13,8 @@ import {
 import { supabase } from "../../lib/supabaseClient";
 
 export default function Sidebar({ icon, name, role }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
@@ -44,7 +47,8 @@ export default function Sidebar({ icon, name, role }) {
       href: "/login",
       action: async () => {
         await supabase.auth.signOut();
-        window.location.href = "/login";
+        queryClient.clear();
+        navigate("/login", { replace: true });
       },
     },
   ];

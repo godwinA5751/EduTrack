@@ -1,113 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
 import CGPAProgress from "../components/cgpa/CGPAProgress";
 import Header from "../components/layout/Header";
 import Message from "../components/layout/Message";
 import DashboardSkeleton from "../components/ui/DashboardSkeleton";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardCGPA } from "../queries/dashboardQueries";
 
 export default function DashBoard() {
   const navigate = useNavigate();
-  const [cumulativeCGPA, setCumulativeCGPA] = useState(0);
-  const [loading, setLoading] = useState(true);
+
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["dashboard-cgpa"],
+    queryFn: getDashboardCGPA,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
   useEffect(() => {
-    const fetchCGPA = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session) {
-          navigate("/login");
-          return;
-        }
-
-        const userId = session.user.id;
-
-        const { data, error } = await supabase
-          .from("levels")
-          .select(`
-          id,
-          semesters (
-            id,
-            courses (
-              code,
-              unit,
-              point
-            )
-          )
-        `)
-          .eq("user_id", userId);
-
-        if (error) throw error;
-
-        // 🔁 SAME LOGIC AS PROFILE
-        const normalize = (code) =>
-          code?.toUpperCase().replace(/\s+/g, "") || "";
-
-        const allCourses = [];
-
-        data.forEach((lvl) => {
-          lvl.semesters?.forEach((sem) => {
-            sem.courses?.forEach((course) => {
-              allCourses.push({
-                ...course,
-                semesterId: sem.id,
-              });
-            });
-          });
-        });
-
-        const grouped = {};
-
-        allCourses.forEach((c) => {
-          const code = normalize(c.code);
-          if (!grouped[code]) grouped[code] = [];
-          grouped[code].push(c);
-        });
-
-        const resolved = [];
-
-        Object.values(grouped).forEach((attempts) => {
-          attempts.sort((a, b) => (b.point || 0) - (a.point || 0));
-
-          const best = attempts[0];
-
-          const original = attempts.reduce((a, b) =>
-            a.semesterId < b.semesterId ? a : b
-          );
-
-          resolved.push({
-            ...original,
-            point: best.point || 0,
-          });
-        });
-
-        let totalUnits = 0;
-        let totalPoints = 0;
-
-        resolved.forEach((c) => {
-          const unit = c.unit || 0;
-          const point = c.point || 0;
-
-          totalUnits += unit;
-          totalPoints += unit * point;
-        });
-
-        const cgpa = totalUnits ? totalPoints / totalUnits : 0;
-
-        setCumulativeCGPA(Number(cgpa.toFixed(2)));
-      } catch (err) {
-        console.error(err);
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCGPA();
-  }, [navigate]);
+    if (error?.message === "Not authenticated") {
+      navigate("/login", { replace: true });
+    }
+  }, [error, navigate]);
 
   return (
     <div className="overflow-hidden min-h-screen p-8 
@@ -117,9 +35,9 @@ export default function DashBoard() {
 
       <Header title="Dashboard" subtitle="Track your academic progress" />
 
-      {loading ? <DashboardSkeleton /> : (
+      {isLoading ? <DashboardSkeleton /> : (
         <div className="flex items-center justify-center gap-15 flex-col lg:flex-row absolute top-[50%] translate-x-[-50%] translate-y-[-50%] left-[50%]">
-          <CGPAProgress cgpa={cumulativeCGPA} />
+          <CGPAProgress cgpa={data?.cgpa ?? 0} />
           <Message />
         </div>
       )}

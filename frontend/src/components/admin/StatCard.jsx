@@ -37,7 +37,7 @@ export default function StatCard({
             className={`text-4xl font-bold mt-2 ${
               active
                 ? "text-white"
-                : "text-[#0D5C75] dark:text-white"
+                : "text-[#199FB1]"
             }`}
           >
             {value}

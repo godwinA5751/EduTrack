@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 
 import adminRoutes from "./routes/admin.js";
 import { adminLimiter } from "./middleware/rateLimiter.js";
+import { startCacheScheduler } from "./cache/cacheScheduler.js";
+import heartbeatRoutes from "./routes/heartbeat.js";
 
 dotenv.config();
 
@@ -33,9 +35,11 @@ app.use(express.json());
 
 app.use("/admin", adminLimiter);
 app.use("/admin", adminRoutes);
+app.use("/", heartbeatRoutes);
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startCacheScheduler();
 });

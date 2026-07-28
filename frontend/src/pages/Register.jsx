@@ -15,7 +15,6 @@ export default function Register() {
   const [form, setForm] = useState({
     fullName: "",
     matricNo: "",
-    level: "",
     password: "",
   });
 
@@ -31,7 +30,7 @@ export default function Register() {
     e.preventDefault();
     setMessage({ text: "", type: "" });
 
-    if (!form.fullName || !form.matricNo || !form.password || !form.level) {
+    if (!form.fullName || !form.matricNo || !form.password) {
       setMessage({ text: "Please fill all fields", type: "error" });
       setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
@@ -67,13 +66,13 @@ export default function Register() {
     const userId = data.user.id;
 
     // 2️⃣ Create profile
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      full_name: form.fullName,
-      matric_no: matricNo, // 👈 use normalized value
-      registered_level: Number(form.level),
-      current_level: 100,
-    });
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: userId,
+        full_name: form.fullName,
+        matric_no: matricNo,
+      });
 
     if (profileError) {
       setMessage({ text: profileError.message, type: "error" });
@@ -119,16 +118,6 @@ export default function Register() {
           name="matricNo"
           placeholder="Matric Number"
           value={form.matricNo}
-          onChange={handleChange}
-          className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
-        />
-
-        <input
-          type="text"
-          name="level"
-          inputMode="numeric"
-          placeholder="Current Level (e.g., 100, 200)"
-          value={form.level}
           onChange={handleChange}
           className="w-full p-3 rounded-xl border border-white/30 dark:border-white/10 bg-white/10 dark:bg-white/5 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 transition"
         />

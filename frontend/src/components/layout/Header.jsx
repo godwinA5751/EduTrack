@@ -1,46 +1,33 @@
 import Sidebar from "./SideBar";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
 import HeaderSkeleton from "../ui/HeaderSkeleton";
+
+import { useQuery } from "@tanstack/react-query";
+import { getCurrentUser } from "../../queries/userQueries";
 
 export default function Header({ title, subtitle }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getCurrentUser,
+  
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  });
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try{
-        setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-  
-        if (!session) {
-          navigate("/login");
-          return;
-        }
-  
-        const userId = session.user.id;
-  
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", userId)
-          .single();
-  
-        setUser(profile);
-      } catch (e) {
-        if (e) navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (error) {
+      navigate("/login");
+    }
+  }, [error, navigate]);
 
-    fetchUser();
-  }, [navigate]);
-
-  if (loading) return <HeaderSkeleton />;
-
+  if (isLoading) return <HeaderSkeleton />;
   if (!user) return null;
 
   const initial = user.full_name?.charAt(0) || "?";
