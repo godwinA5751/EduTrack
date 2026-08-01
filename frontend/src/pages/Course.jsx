@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
+import toast from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaTrash, FaEdit } from "react-icons/fa";
 import CoursesSkeleton from "../components/ui/CoursesSkeleton";
@@ -104,7 +105,7 @@ export default function Courses() {
     );
     
     if (courseExists) {
-      showMessage("Course already exists in this semester.");
+      toast.error("Course already exists in this semester.");
       return;
     }
 
@@ -124,19 +125,18 @@ export default function Courses() {
         p_user_id: session.user.id,
       });
       
-      setForm({ code: "", unit: "", grade: "" });
-      
       await refreshAcademicData({
         queryClient,
         semesterId,
         level,
       });
-
-      showMessage("Course added successfully ✅");
+      
+      setForm({ code: "", unit: "", grade: "" });
+      
+      toast.success("Course added successfully ✅");
 
     } catch (err) {
-      console.error("Add failed:", err);
-      showMessage("Failed to add course");
+      toast.error(err ? err : "Failed to add course");
     } finally {
       setIsAdding(false);
     }
@@ -165,11 +165,10 @@ export default function Courses() {
         semesterId,
         level,
       });
-      showMessage("Course deleted successfully ✅");
+      toast.success("Course deleted successfully ✅");
   
     } catch (err) {
-      console.error(err);
-      showMessage("Failed to delete course");
+      toast.error(err ? err : "Failed to delete course");
     } finally {
       setIsDeleting(false);
     }
@@ -192,7 +191,7 @@ export default function Courses() {
     );
     
     if (courseExists) {
-      showMessage("Course already exists in this semester.");
+      toast.error("Course already exists in this semester.");
       return;
     }
   
@@ -215,13 +214,12 @@ export default function Courses() {
         level,
       });
   
-      showMessage("Course updated successfully ✅");
+      toast.success("Course updated successfully ✅");
   
       setShowEditModal(false);
       setSelectedCourse(null);
     } catch (err) {
-      console.error(err);
-      showMessage("Failed to update course");
+      toast.error(err ? err : "Failed to update course");
     } finally {
       setIsUpdating(false);
     }
