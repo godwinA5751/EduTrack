@@ -35,9 +35,8 @@ export function resolveCarryovers(courses = []) {
     resolved.push({
       ...original,
       point: best.point || 0,
-      isCarrying:
-        attempts.length > 1 &&
-        attempts.some(a => (a.point || 0) < (best.point || 0)),
+      grade: best.grade,
+      is_carryover: best.grade === "F",
     });
   });
 

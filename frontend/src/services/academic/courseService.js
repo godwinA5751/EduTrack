@@ -1,5 +1,6 @@
 import { supabase } from "../../lib/supabaseClient";
 import { resolveCarryovers } from "./carryoverService";
+import { normalizeCourseCode } from "./courseUtils";
 import { GRADE_POINTS } from "./constraint";
 
 export async function recalculateAcademicStats(userId) {
@@ -88,13 +89,15 @@ export async function recalculateAcademicStats(userId) {
 }
 
 export async function addCourse(course) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
-    .insert(course);
+    .insert(course)
+    .select()
+    .single();
 
   if (error) throw error;
 
-  return true;
+  return data;
 }
 
 export async function deleteCourse(id) {
@@ -109,15 +112,20 @@ export async function deleteCourse(id) {
 }
 
 export async function updateCourse(courseId, updates) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("courses")
     .update({
-      code: updates.code.trim().toUpperCase(),
+      code: normalizeCourseCode(updates.code),
       unit: Number(updates.unit),
       grade: updates.grade,
       point: GRADE_POINTS[updates.grade],
+      is_carryover: updates.grade === "F",
     })
-    .eq("id", courseId);
+    .eq("id", courseId)
+    .select()
+    .single();
 
   if (error) throw error;
+
+  return data;
 }

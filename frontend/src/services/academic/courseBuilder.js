@@ -10,5 +10,6 @@ export function buildCourse(form, semesterId) {
     unit: Number(form.unit),
     grade: form.grade,
     point: GRADE_POINTS[form.grade],
+    is_carryover: form.grade === "F"
   };
 }

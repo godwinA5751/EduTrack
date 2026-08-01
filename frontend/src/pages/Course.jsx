@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaTrash, FaEdit } from "react-icons/fa";
 import CoursesSkeleton from "../components/ui/CoursesSkeleton";
@@ -113,10 +114,18 @@ export default function Courses() {
     setIsAdding(true);
 
     try {
-      await addCourse(newCourse)
+      await addCourse(newCourse);
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      await supabase.rpc("sync_carryovers", {
+        p_user_id: session.user.id,
+      });
+      
       setForm({ code: "", unit: "", grade: "" });
-     
+      
       await refreshAcademicData({
         queryClient,
         semesterId,
@@ -142,6 +151,15 @@ export default function Courses() {
   
     try {
       await deleteCourse(id);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      await supabase.rpc("sync_carryovers", {
+        p_user_id: session.user.id,
+      });
+      
       await refreshAcademicData({
         queryClient,
         semesterId,
@@ -182,6 +200,14 @@ export default function Courses() {
       setIsUpdating(true);
   
       await updateCourse(selectedCourse.id, editForm);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      await supabase.rpc("sync_carryovers", {
+        p_user_id: session.user.id,
+      });
   
       await refreshAcademicData({
         queryClient,
@@ -250,7 +276,7 @@ export default function Courses() {
               <div key={c.id} className="grid grid-cols-4 items-center bg-white/20 dark:bg-white/5 p-3 rounded-xl text-white">
                 <span>
                   {c.code}
-                  {c.isCarrying && (
+                  {c.is_carryover && (
                     <span className="ml-2 text-xs text-yellow-300">🔁</span>
                   )}
                 </span>
