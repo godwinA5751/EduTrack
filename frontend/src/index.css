@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import 'react-modern-drawer/dist/index.css';
 
+:root {
+  --level-gpa-color: #66fe2a;   /* darker green for light mode contrast */
+  --cumulative-cgpa-color: #05d8fd; /* darker teal for light mode */
+}
+
+.dark {
+  --level-gpa-color: #72c14e;
+  --cumulative-cgpa-color: #199FB1;
+}
 
 /* Hide scrollbar for all scrollable elements */
 .scrollbar-hide::-webkit-scrollbar {

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CGPAProgress from "../components/cgpa/CGPAProgress";
+import CGPATrend from "../components/cgpa/CGPATrend";
 import Header from "../components/layout/Header";
 import Message from "../components/layout/Message";
 import DashboardSkeleton from "../components/ui/DashboardSkeleton";
@@ -36,9 +37,10 @@ export default function DashBoard() {
       <Header title="Dashboard" subtitle="Track your academic progress" />
 
       {isLoading ? <DashboardSkeleton /> : (
-        <div className="flex items-center justify-center gap-15 flex-col lg:flex-row absolute top-[50%] translate-x-[-50%] translate-y-[-50%] left-[50%]">
+        <div className="flex items-center justify-center gap-5 md:gap-15 lg:gap-25 flex-col lg:flex-row absolute top-[50%] translate-x-[-50%] translate-y-[-50%] left-[50%] mt-10 lg:mt-0">
           <CGPAProgress cgpa={data?.cgpa ?? 0} />
-          <Message />
+          {data?.cgpa > 0 && <CGPATrend data={data?.trend ?? []} />}
+          {data?.cgpa === 0 && <Message />}
         </div>
       )}
     </div>

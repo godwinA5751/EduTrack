@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import LevelCard from "../components/cgpa/LevelCard";
@@ -53,6 +54,11 @@ export default function Levels() {
     }
     try {
       setIsDeleting(true);
+
+      await supabase
+        .from("profiles")
+        .update({ graduated: false })
+        .eq("id", userId);
   
       await deleteLevel(selectedLevel.id);
       

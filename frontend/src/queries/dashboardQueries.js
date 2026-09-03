@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
-import { calculateCGPA } from "../services/academic";
+import { calculateCGPA, calculateLevelStats } from "../services/academic";
 
 export async function getDashboardCGPA() {
   const {
@@ -14,6 +14,7 @@ export async function getDashboardCGPA() {
     .from("levels")
     .select(`
       id,
+      level,
       semesters (
         id,
         courses (
@@ -23,9 +24,24 @@ export async function getDashboardCGPA() {
         )
       )
     `)
-    .eq("user_id", session.user.id);
+    .eq("user_id", session.user.id)
+    .order("level");
 
   if (error) throw error;
 
-  return calculateCGPA(levels || []);
+  const { cgpa } = calculateCGPA(levels || []);
+  const levelStats = calculateLevelStats(levels || []);
+
+  const trend = (levels || []).map((lvl, index) => {
+    const levelsSoFar = (levels || []).slice(0, index + 1);
+    const cumulative = calculateCGPA(levelsSoFar).cgpa;
+
+    return {
+      label: `${lvl.level}lvl`,
+      gpa: levelStats[lvl.id]?.gpa ?? 0,
+      cgpa: cumulative,
+    };
+  });
+
+  return { cgpa, trend };
 }

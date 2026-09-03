@@ -25,7 +25,7 @@ export default function CGPAProgress({ cgpa = 0 }) {
   }, [cgpa]);
 
   return (
-    <div className="relative w-72 h-40">
+    <div className="relative w-72 h-40 mt-10 md:mt-5 lg:mt-0">
       <svg viewBox="0 0 200 100" className="w-full h-full">
         <defs>
           {/* 🌈 Gradient */}

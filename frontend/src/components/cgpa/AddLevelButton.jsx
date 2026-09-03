@@ -1,42 +1,40 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const AddLevelButton = ({ levels, userId, levelStats }) => {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState({ text: "", type: "" });
   const [showPrompt, setShowPrompt] = useState(false);
   const [graduatePrompt, setGraduatePrompt] = useState(false);
-  const [isGraduated, setIsGraduated] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  useEffect(() => {
-    const fetchGraduationStatus = async () => {
-      const { data: profile, error } = await supabase
+  const { data: profile } = useQuery({
+    queryKey: ["profile", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("profiles")
         .select("graduated")
         .eq("id", userId)
         .single();
 
-      if (error) {
-        console.error(error);
-        return;
-      }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      if (profile?.graduated) {
-        setIsGraduated(true);
-      }
-    };
-
-    if (userId) {
-      fetchGraduationStatus();
-    }
-  }, [userId]);
+  const isGraduated = !!profile?.graduated;
 
   const showTempMessage = (text, type = "success") => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: "", type: "" }), 2500);
   };
+
+  const lastLevel = levels[levels.length - 1];
+  const lastLevelStats = lastLevel ? levelStats[lastLevel.id] : null;
+  const canShowGraduated = isGraduated && lastLevelStats?.gpa > 0;
 
   const createLevel = async (levelValue) => {
     if (isAdding) return;
@@ -53,7 +51,7 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
 
     const previousLevels =
       queryClient.getQueryData(["levels", userId]);
-    
+
     queryClient.setQueryData(
       ["levels", userId],
       (old = []) => [...old, optimisticLevel]
@@ -89,11 +87,11 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
       queryClient.invalidateQueries({
         queryKey: ["levels"],
       });
-      
+
       queryClient.invalidateQueries({
         queryKey: ["dashboard-cgpa"],
       });
-      
+
       queryClient.invalidateQueries({
         queryKey: ["profile"],
       });
@@ -119,19 +117,16 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
 
   const addLevel = () => {
     if (isGraduated) {
-      showTempMessage("You have already graduated 🎓", "error");
+      showTempMessage("You have reached the final year 🎓", "error");
       return;
     }
-    
+
     if (levels.length === 0) {
       setShowPrompt(true);
       return;
     }
 
-    const lastLevel = levels[levels.length - 1];
-    const stats = levelStats[lastLevel.id];
-    
-    if (!stats || stats.units === 0 || stats.gpa <= 0) {
+    if (!lastLevelStats || lastLevelStats.units === 0 || lastLevelStats.gpa <= 0) {
       showTempMessage(
         `Complete ${lastLevel.level} Level before adding another level.`,
         "error"
@@ -204,18 +199,14 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
 
                   await createLevel(nextLevel);
 
-                  const { error } = await supabase
+                  await supabase
                     .from("profiles")
                     .update({ graduated: true })
                     .eq("id", userId);
 
                   queryClient.invalidateQueries({
-                    queryKey: ["profile"],
+                    queryKey: ["profile", userId],
                   });
-
-                  if (!error) {
-                    setIsGraduated(true);
-                  }
 
                   setGraduatePrompt(false);
                 }}
@@ -228,8 +219,6 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
               <button
                 onClick={() => {
                   const nextLevel = levels[levels.length - 1].level + 100;
-
-
 
                   createLevel(nextLevel);
                   setGraduatePrompt(false);
@@ -244,9 +233,15 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
       )}
 
       {/* Add Level Button */}
-      {isGraduated ? (
-        <div className="w-full text-center py-6 font-bold text-green-500 text-lg">
-          🎓 Graduated
+      {canShowGraduated ? (
+        <div className="w-full flex flex-col items-center justify-center text-center py-0 gap-1">
+          <span className="text-3xl">🎓</span>
+          <span className="font-bold text-green-500 text-lg">
+            Congratulations, you did it!
+          </span>
+          <span className="text-sm text-gray-400">
+            Wishing you nothing but success ahead 🎉
+          </span>
         </div>
       ) : (
         <button
