@@ -16,14 +16,19 @@ import {
   updateCourse,
 } from "../services/academic";
 import EditCourseModal from "../components/cgpa/EditCourseModal";
-
+import { getCurrentUser } from "../queries/userQueries";
 
 export default function Courses() {
   const navigate = useNavigate();
+  const isOffline = !navigator.onLine;
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const { level, semester, semesterId } = location.state || {};
+  const searchParams = new URLSearchParams(location.search);
+
+  const level = Number(searchParams.get("level")) || null;
+  const semester = Number(searchParams.get("semester")) || null;
+  const semesterId = searchParams.get("semesterId") || null;
 
   
   const [form, setForm] = useState({ code: "", unit: "", grade: "" });
@@ -46,14 +51,21 @@ export default function Courses() {
     grade: "",
   });
 
-  const {
-    data: courses = [],
-    isLoading,
-  } = useQuery({
-    queryKey: ["courses", semesterId],
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getCurrentUser,
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const userId = currentUser?.id ?? null;
+
+  const { data: courses = [], isLoading } = useQuery({
+    queryKey: ["courses", semesterId, userId],
     queryFn: () => getCourses(semesterId),
+    enabled: Boolean(semesterId) && Boolean(userId),
     staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    gcTime: 7 * 24 * 60 * 60 * 1000,
   });
 
   const openEditModal = (course) => {
@@ -79,7 +91,7 @@ export default function Courses() {
 
   useEffect(() => {
     if (!semesterId || !level || !semester) {
-      navigate("/levels");
+      navigate("/levels", { replace: true });
     }
   }, [semesterId, level, semester, navigate]);
   
@@ -232,7 +244,7 @@ export default function Courses() {
       dark:from-[#0B1F2A] dark:via-[#0F3A47] dark:to-[#021A22]">
       {/* Header */}
       <div className="flex items-center gap-3 fixed top-6 left-4 z-50 bg-white/20 dark:bg-white/5 backdrop-blur-md px-4 py-2 rounded-3xl">
-        <button onClick={() => navigate("/semester", { state: { level } })}>
+        <button onClick={() => navigate(`/semester?level=${level}`)}>
           <FaArrowLeft className="text-white cursor-pointer hover:scale-110 transition-transform duration-300 ease-out hover:translate-x-0.5" />
         </button>
         <h1 className="text-white font-bold">
@@ -242,7 +254,7 @@ export default function Courses() {
       </div>
 
       {/* Form */}
-      {isLoading ? <CoursesSkeleton /> : (
+      {(!currentUser || isLoading) ? <CoursesSkeleton /> : (
         <div className="grid lg:grid-cols-2 gap-6 mt-24">
           <div className="bg-white/20 dark:bg-white/5 p-6 rounded-xl space-y-3 text-center">
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -282,7 +294,13 @@ export default function Courses() {
                 <span className="text-center">{c.grade}</span>
                 <span className="flex justify-center gap-4">
                   <FaEdit
-                    onClick={() => openEditModal(c)}
+                    onClick={() => {
+                      if (isOffline) {
+                        toast.error("You must be online to edit courses.");
+                        return;
+                      }
+                      openEditModal(c);
+                    }}
                     className={`
                       transition
                       ${
@@ -294,7 +312,13 @@ export default function Courses() {
                   />
                 
                   <FaTrash
-                    onClick={() => deleteCourseHandler(c.id)}
+                    onClick={() => {
+                      if (isOffline) {
+                        toast.error("You must be online to delete courses.");
+                        return;
+                      }
+                      deleteCourseHandler(c.id);
+                    }}
                     className={`
                       transition
                       ${

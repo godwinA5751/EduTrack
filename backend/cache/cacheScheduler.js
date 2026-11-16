@@ -6,8 +6,6 @@ const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000;
 
 export async function refreshUsersCache() {
   try {
-    console.log("Refreshing users cache...");
-
     const response = await getAdminUsers({
       page: 1,
       limit: 10,
@@ -23,10 +21,8 @@ export async function refreshUsersCache() {
     });
 
     adminCache.set(cacheKey, response);
-
-    console.log(`Users cache refreshed: ${cacheKey}`);
   } catch (err) {
-    console.error("Cache refresh failed:", err.message);
+    // Cache refresh failures are handled silently.
   }
 }
 

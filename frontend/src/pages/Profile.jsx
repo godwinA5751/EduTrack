@@ -1,35 +1,31 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Header from "../components/layout/Header";
-import ProfileSkeleton from "../components/ui/ProfileSkeleton";
 import { useQuery } from "@tanstack/react-query";
+import { getCurrentUser } from "../queries/userQueries";
 import { getProfile } from "../queries/profileQueries";
 import { calculateProfileStats } from "../services/academic";
+import Header from "../components/layout/Header";
+import ProfileSkeleton from "../components/ui/ProfileSkeleton";
 
 export default function Profile() {
-  const navigate = useNavigate();
+  const { data: currentUser, isPending: isUserPending } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getCurrentUser,
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
 
-  const {
-    data,
-    // isLoading,
-    isPending
-  } = useQuery({
-    queryKey: ["profile"],
+  const userId = currentUser?.id ?? null;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["profile", userId],
     queryFn: getProfile,
-    staleTime: 12 * 60 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
+    enabled: Boolean(userId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 7 * 24 * 60 * 60 * 1000,
   });
 
   const profile = data?.profile ?? null;
   const academic = data?.levels ?? [];
 
-  useEffect(() => {
-    if (!isPending && !profile) {
-      navigate("/login");
-    }
-  }, [isPending, profile, navigate]);
-
-  // ✅ Use carryover-aware calculation for stats
   const stats = calculateProfileStats(academic);
 
   const currentLevel =
@@ -37,7 +33,7 @@ export default function Profile() {
       ? Math.max(...academic.map((l) => l.level))
       : "Not Started";
 
-  if (isPending) {
+  if (isUserPending || isLoading) {
     return (
       <div>
         <Header title="Profile" subtitle="Your academic summary" className="mb-20" />
@@ -45,7 +41,7 @@ export default function Profile() {
       </div>
     );
   }
-  if (!profile) return null;
+  if (!profile) return error ? <p>Error: {error.message}</p> : <p>No profile data available.</p>;
 
   const initial = profile.full_name?.charAt(0) || "?";
 

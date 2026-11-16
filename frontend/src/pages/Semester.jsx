@@ -5,10 +5,10 @@ import { supabase } from "../lib/supabaseClient";
 import { FaArrowLeft } from "react-icons/fa";
 import SemesterCard from "../components/cgpa/SemesterCard";
 import SemesterSkeleton from "../components/ui/SemesterSkeleton";
-import { useQuery } from "@tanstack/react-query";
 import { getSemesters } from "../queries/semesterQueries";
 import { calculateSemesterStats } from "../services/academic";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { getCurrentUser } from "../queries/userQueries";
 import {
   deleteSemester,
   refreshAcademicData,
@@ -19,7 +19,9 @@ export default function Semester() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const levelNumber = location.state?.level ?? null;
+  const levelNumber = Number(
+    new URLSearchParams(location.search).get("level")
+  ) || null;
 
   const [message, setMessage] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -33,15 +35,21 @@ export default function Semester() {
     if (!levelNumber) navigate("/levels");
   }, [levelNumber, navigate]);
 
-  const {
-    data,
-    isLoading,
-  } = useQuery({
-    queryKey: ["semesters", levelNumber],
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getCurrentUser,
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const userId = currentUser?.id ?? null;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["semesters", levelNumber, userId],
     queryFn: () => getSemesters(levelNumber),
-    enabled: levelNumber !== null,
+    enabled: levelNumber !== null && Boolean(userId),
     staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    gcTime: 7 * 24 * 60 * 60 * 1000,
   });
 
   const level = data?.level;
@@ -148,7 +156,7 @@ export default function Semester() {
       </div>
 
       {/* Semesters Grid */}
-      {isLoading ? <SemesterSkeleton /> : (
+      {(!currentUser || isLoading) ? <SemesterSkeleton /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-32">
           {semesters.map(sem => {
             const stats = semesterStats[sem.id];
@@ -161,9 +169,11 @@ export default function Semester() {
                 key={sem.id}
                 name={`${sem.semester}${["th", "st", "nd", "rd"][sem.semester] || "th"} Semester`}
                 gpa={stats?.gpa?.toFixed(2) || "0.00"}
-                onClick={() => navigate("/courses", {
-                  state: { level: level.level, semester: sem.semester, semesterId: sem.id }
-                })}
+                onClick={() =>
+                  navigate(
+                    `/courses?level=${level.level}&semester=${sem.semester}&semesterId=${sem.id}`
+                  )
+                }
                 canDelete={sem.semester === highestSemester}
                 onDelete={(e) => {
                   e.stopPropagation();

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import Logo from "../../asset/logo.PNG";
 import {
   FaHome,
   FaLayerGroup,
@@ -11,6 +10,7 @@ import {
   FaUserShield,
 } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
+import { createUserPersister } from "../../lib/queryPersister";
 
 export default function Sidebar({ icon, name, role }) {
   const queryClient = useQueryClient();
@@ -46,7 +46,18 @@ export default function Sidebar({ icon, name, role }) {
       icon: <FaTimes />,
       href: "/login",
       action: async () => {
+        const userId = queryClient.getQueryData(["current-user"])?.id;
+
+        try {
+          if (userId) {
+            await createUserPersister(userId).removeClient();
+          }
+        } catch (error) {
+          console.error("Failed to remove persisted user cache:", error);
+        }
+
         await supabase.auth.signOut();
+
         queryClient.clear();
         navigate("/login", { replace: true });
       },
@@ -77,7 +88,11 @@ export default function Sidebar({ icon, name, role }) {
       >
         {/* Logo */}
         <div className="mb-8 flex items-center gap-2 justify-end">
-          <img src={Logo} loading="lazy" alt="EduTrack Logo" className="w-8 h-8 py-1" />
+          <img
+            src="/logo.PNG"
+            alt="EduTrack Logo"
+            className="w-8 h-8 py-1"
+          />
           <h1 className="text-2xl font-bold text-white">EduTrack</h1>
         </div>
 

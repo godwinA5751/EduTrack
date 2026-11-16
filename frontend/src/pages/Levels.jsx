@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import AddLevelButton from "../components/cgpa/AddLevelButton";
 import LevelsSkeleton from "../components/ui/LevelsSkeleton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLevels } from "../queries/levelQueries";
+import { getCurrentUser } from "../queries/userQueries";
 import {
   deleteLevel,
   refreshAcademicData,
@@ -21,26 +22,25 @@ export default function Levels() {
   const [selectedLevel, setSelectedLevel] = useState(null);
   
   const navigate = useNavigate();
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["levels"],
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getCurrentUser,
+    retry: false,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const userId = currentUser?.id ?? null;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["levels", userId],
     queryFn: getLevels,
+    enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    gcTime: 7 * 24 * 60 * 60 * 1000,
   });
 
   const levels = data?.levels ?? [];
   const levelStats = data?.stats ?? {};
-  const userId = data?.userId ?? null;
-
-  useEffect(() => {
-    if (error?.message === "Not authenticated") {
-      navigate("/login", { replace: true });
-    }
-  }, [error, navigate]);
 
   const handleDeleteLevel = async () => {
     if (!selectedLevel) return;
@@ -90,7 +90,7 @@ export default function Levels() {
 
       <Header title="Levels" subtitle="Your academic levels overview" />
 
-      {isLoading ? <LevelsSkeleton /> : (
+      {!currentUser || isLoading ? <LevelsSkeleton /> : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-36 px-3 h-[calc(100vh-70px)] overflow-y-auto scrollbar-hide">
           {levels.map((lvl) => {
             const stats = levelStats[lvl.id] || {
@@ -105,7 +105,7 @@ export default function Levels() {
                 level={lvl.level}
                 gpa={stats.gpa} // carryover-aware CGPA
                 onClick={() =>
-                  navigate("/semester", { state: { level: lvl.level } })
+                  navigate(`/semester?level=${lvl.level}`)
                 }
                 canDelete={lvl.level === highestLevel}
                 onDelete={(e) => {

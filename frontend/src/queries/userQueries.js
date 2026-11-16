@@ -5,9 +5,7 @@ export async function getCurrentUser() {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -15,7 +13,9 @@ export async function getCurrentUser() {
     .eq("id", session.user.id)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   return profile;
 }

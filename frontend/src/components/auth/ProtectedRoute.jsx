@@ -1,31 +1,48 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "../../queries/userQueries";
+import { useIsRestoring, useQuery } from "@tanstack/react-query";
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation();
+  const isRestoring = useIsRestoring();
 
   const {
     data: profile,
-    isLoading,
+    isPending,
+    isPaused,
   } = useQuery({
     queryKey: ["current-user"],
     queryFn: getCurrentUser,
     retry: false,
-    staleTime: 0,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 7 * 24 * 60 * 60 * 1000,
   });
 
-  if (isLoading) {
+  if (isRestoring) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        Loading...
+      <div className="min-h-screen flex items-center justify-center">
+        Loading EduTrack...
       </div>
     );
   }
 
-  if (!profile) {
-    return <Navigate to="/login" replace />;
+  if (isPending && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        {isPaused ? (
+          <p>
+            You're offline. Connect to the internet to sign in or load your
+            academic data for the first time.
+          </p>
+        ) : (
+          <p>Loading...</p>
+        )}
+      </div>
+    );
   }
+
+  if (!profile) return <Navigate to="/login" replace />;
+  
 
   if (
     profile.must_change_password &&

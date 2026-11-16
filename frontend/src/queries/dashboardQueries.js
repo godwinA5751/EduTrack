@@ -1,3 +1,4 @@
+
 import { supabase } from "../lib/supabaseClient";
 import { calculateCGPA, calculateLevelStats } from "../services/academic";
 

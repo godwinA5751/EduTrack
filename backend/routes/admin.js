@@ -118,11 +118,6 @@ router.post("/reset-password", async (req, res) => {
     if (updateError) throw updateError;
     adminCache.flushAll();
 
-    // Audit log (for now)
-    console.log(
-      `${req.user.email} reset password for ${profile.full_name} (${profile.matric_no})`
-    );
-
     return res.status(200).json({
       success: true,
       message: "Password reset successfully",

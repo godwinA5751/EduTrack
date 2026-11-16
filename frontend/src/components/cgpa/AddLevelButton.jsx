@@ -2,7 +2,11 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
-const AddLevelButton = ({ levels, userId, levelStats }) => {
+const AddLevelButton = ({
+  levels = [],
+  userId,
+  levelStats = {},
+}) => {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState({ text: "", type: "" });
   const [showPrompt, setShowPrompt] = useState(false);
@@ -10,7 +14,7 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
   const [isAdding, setIsAdding] = useState(false);
 
   const { data: profile } = useQuery({
-    queryKey: ["profile", userId],
+    queryKey: ["graduation-status", userId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -21,7 +25,7 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -37,24 +41,39 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
   const canShowGraduated = isGraduated && lastLevelStats?.gpa > 0;
 
   const createLevel = async (levelValue) => {
-    if (isAdding) return;
+    if (isAdding) return false;
+
     setIsAdding(true);
     setShowPrompt(false);
 
-    // 🚀 Optimistic UI (instant)
     const optimisticLevel = {
       id: crypto.randomUUID(),
       level: levelValue,
-      cgpa: 0,
+      semesters: [],
       optimistic: true,
     };
 
-    const previousLevels =
-      queryClient.getQueryData(["levels", userId]);
+    const previousData = queryClient.getQueryData([
+      "levels",
+      userId,
+    ]);
 
+    const fallbackData = previousData ?? {
+      levels,
+      stats: levelStats,
+      userId,
+    };
+
+    // Optimistically add the new level while preserving the cache structure.
     queryClient.setQueryData(
       ["levels", userId],
-      (old = []) => [...old, optimisticLevel]
+      (old) => ({
+        ...(old ?? fallbackData),
+        levels: [
+          ...(old?.levels ?? fallbackData.levels),
+          optimisticLevel,
+        ],
+      })
     );
 
     try {
@@ -70,46 +89,53 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
 
       if (error) throw error;
 
-      // 🔁 Replace optimistic level with real one
+      // Replace the temporary level with the actual database record.
       queryClient.setQueryData(
         ["levels", userId],
-        (old = []) =>
-          old.map((lvl) =>
-            lvl.id === optimisticLevel.id
-              ? {
-                  ...realLevel,
-                  semesters: [],
-                }
-              : lvl
-          )
+        (old) => {
+          const current = old ?? fallbackData;
+
+          return {
+            ...current,
+            levels: current.levels.map((lvl) =>
+              lvl.id === optimisticLevel.id
+                ? {
+                    ...realLevel,
+                    semesters: [],
+                  }
+                : lvl
+            ),
+          };
+        }
       );
 
-      queryClient.invalidateQueries({
-        queryKey: ["levels"],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard-cgpa"],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["profile"],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["levels", userId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard-cgpa", userId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["profile", userId],
+        }),
+      ]);
 
       showTempMessage(`Level ${levelValue} added successfully!`);
-      queryClient.invalidateQueries({
-        queryKey: ["levels", userId],
-      });
-    } catch (err) {
-      console.error(err);
 
-      // ❌ Rollback optimistic update
+      return true;
+    } catch (err) {
+      console.error("Failed to add level:", err);
+
+      // Restore the original cache.
       queryClient.setQueryData(
         ["levels", userId],
-        previousLevels
+        previousData
       );
 
       showTempMessage("Failed to add level", "error");
+
+      return false;
     } finally {
       setIsAdding(false);
     }
@@ -194,17 +220,30 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
             <div className="flex gap-4 justify-center">
               {/* ✅ YES → graduate */}
               <button
+                disabled={isAdding}
                 onClick={async () => {
                   const nextLevel = levels[levels.length - 1].level + 100;
 
-                  await createLevel(nextLevel);
+                  const created = await createLevel(nextLevel);
 
-                  await supabase
+                  if (!created) return;
+
+                  const { error } = await supabase
                     .from("profiles")
                     .update({ graduated: true })
                     .eq("id", userId);
 
-                  queryClient.invalidateQueries({
+                  if (error) {
+                    console.error("Failed to update graduation status:", error);
+                    showTempMessage("Level added, but graduation status failed to update.", "error");
+                    return;
+                  }
+
+                  await queryClient.invalidateQueries({
+                    queryKey: ["graduation-status", userId],
+                  });
+
+                  await queryClient.invalidateQueries({
                     queryKey: ["profile", userId],
                   });
 
@@ -217,6 +256,7 @@ const AddLevelButton = ({ levels, userId, levelStats }) => {
 
               {/* ❌ NO → continue journey */}
               <button
+                disabled={isAdding}
                 onClick={() => {
                   const nextLevel = levels[levels.length - 1].level + 100;
 
