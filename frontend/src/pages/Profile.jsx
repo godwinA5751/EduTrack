@@ -25,8 +25,7 @@ export default function Profile() {
 
   const profile = data?.profile ?? null;
   const academic = data?.levels ?? [];
-
-  const stats = calculateProfileStats(academic);
+  const stats = data?.stats ?? calculateProfileStats(academic);
 
   const currentLevel =
     academic.length > 0

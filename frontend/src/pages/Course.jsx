@@ -14,13 +14,17 @@ import {
   addCourse,
   deleteCourse,
   updateCourse,
+  createOfflineCourse,
+  updateOfflineCourse,
+  deleteOfflineCourse,
+  recalculateOfflineAcademicStats,
+  getPendingMutations 
 } from "../services/academic";
 import EditCourseModal from "../components/cgpa/EditCourseModal";
 import { getCurrentUser } from "../queries/userQueries";
 
 export default function Courses() {
   const navigate = useNavigate();
-  const isOffline = !navigator.onLine;
   const location = useLocation();
   const queryClient = useQueryClient();
 
@@ -60,6 +64,20 @@ export default function Courses() {
 
   const userId = currentUser?.id ?? null;
 
+  const refreshOfflineAcademicStats = async () => {
+    try {
+      await recalculateOfflineAcademicStats({
+        userId,
+        queryClient,
+      });
+    } catch (error) {
+      console.error(
+        "Offline academic statistics recalculation failed:",
+        error
+      );
+    }
+  };
+
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ["courses", semesterId, userId],
     queryFn: () => getCourses(semesterId),
@@ -88,7 +106,6 @@ export default function Courses() {
   };
 
   /* ───────────────────────── GUARD ───────────────────────── */
-
   useEffect(() => {
     if (!semesterId || !level || !semester) {
       navigate("/levels", { replace: true });
@@ -96,144 +113,241 @@ export default function Courses() {
   }, [semesterId, level, semester, navigate]);
   
   /* ───────────────────────── HANDLERS ───────────────────────── */
-
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   /* ───────────────────────── ADD COURSE (OPTIMISTIC) ───────────────────────── */
-
   const addCourseHandler = async () => {
     const validationError = validateCourse(form);
+
     if (validationError) {
       showMessage(validationError);
       return;
     }
 
     const normalizedCode = form.code.trim().toUpperCase();
-    
+
     const courseExists = courses.some(
       (course) =>
         course.code.trim().toUpperCase() === normalizedCode
     );
-    
+
     if (courseExists) {
       toast.error("Course already exists in this semester.");
       return;
     }
 
-    const newCourse = buildCourse(form, semesterId);
     if (isAdding) return;
+
+    const newCourse = buildCourse(form, semesterId);
 
     setIsAdding(true);
 
     try {
+      // OFFLINE: Save locally and update the query cache.
+      if (!navigator.onLine) {
+        const localCourse = await createOfflineCourse(
+          userId,
+          newCourse
+        );
+
+        queryClient.setQueryData(
+          ["courses", semesterId, userId],
+          (oldCourses = []) => [...oldCourses, localCourse]
+        );
+
+        await refreshOfflineAcademicStats();
+
+        setForm({ code: "", unit: "", grade: "" });
+
+        toast.success("Course saved offline. Waiting to sync.");
+
+        return;
+      }
+
+      // ONLINE: Keep the existing Supabase behavior.
       await addCourse(newCourse);
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      
+
       await supabase.rpc("sync_carryovers", {
         p_user_id: session.user.id,
       });
-      
+
       await refreshAcademicData({
         queryClient,
         semesterId,
         level,
       });
-      
-      setForm({ code: "", unit: "", grade: "" });
-      
-      toast.success("Course added successfully ✅");
 
+      setForm({ code: "", unit: "", grade: "" });
+
+      toast.success("Course added successfully ✅");
     } catch (err) {
-      toast.error(err ? err : "Failed to add course");
+      toast.error(err?.message || "Failed to add course");
     } finally {
       setIsAdding(false);
     }
   };
 
-  /* ───────────────────────── DELETE COURSE (OPTIMISTIC) ───────────────────────── */
-
-  const deleteCourseHandler = async (id) => {
-    if (isDeleting) return;
-  
-    setIsDeleting(true);
-  
-    try {
-      await deleteCourse(id);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      
-      await supabase.rpc("sync_carryovers", {
-        p_user_id: session.user.id,
-      });
-      
-      await refreshAcademicData({
-        queryClient,
-        semesterId,
-        level,
-      });
-      toast.success("Course deleted successfully ✅");
-  
-    } catch (err) {
-      toast.error(err ? err : "Failed to delete course");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
+  /* ───────────────────────── UPDATE COURSE (OPTIMISTIC) ───────────────────────── */
   const updateCourseHandler = async () => {
     const validationError = validateCourse(editForm);
-  
+
     if (validationError) {
       showMessage(validationError);
       return;
     }
 
     const normalizedCode = editForm.code.trim().toUpperCase();
-    
+
     const courseExists = courses.some(
       (course) =>
         course.id !== selectedCourse.id &&
         course.code.trim().toUpperCase() === normalizedCode
     );
-    
+
     if (courseExists) {
       toast.error("Course already exists in this semester.");
       return;
     }
-  
+
     try {
       setIsUpdating(true);
-  
+
+      // OFFLINE: Queue the update and update the local cache.
+      if (!navigator.onLine) {
+        const updatedCourse = await updateOfflineCourse(
+          userId,
+          selectedCourse.id,
+          editForm
+        );
+        console.log(
+          "Queue after edit:",
+          await getPendingMutations(userId)
+        );
+
+        queryClient.setQueryData(
+          ["courses", semesterId, userId],
+          (oldCourses = []) =>
+            oldCourses.map((course) =>
+              course.id === selectedCourse.id
+                ? { ...course, ...updatedCourse }
+                : course
+            )
+        );
+
+        await refreshOfflineAcademicStats();
+
+        toast.success("Course updated offline. Waiting to sync.");
+
+        setShowEditModal(false);
+        setSelectedCourse(null);
+        return;
+      }
+
+      // ONLINE: Existing Supabase behavior.
       await updateCourse(selectedCourse.id, editForm);
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      
+
       await supabase.rpc("sync_carryovers", {
         p_user_id: session.user.id,
       });
-  
+
       await refreshAcademicData({
         queryClient,
         semesterId,
         level,
       });
-  
+
       toast.success("Course updated successfully ✅");
-  
+
       setShowEditModal(false);
       setSelectedCourse(null);
     } catch (err) {
-      toast.error(err ? err : "Failed to update course");
+      toast.error(err?.message || "Failed to update course");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  /* ───────────────────────── DELETE COURSE (OPTIMISTIC) ───────────────────────── */
+  const deleteCourseHandler = async (id) => {
+    if (!id) {
+      toast.error("Cannot delete this course because its ID is missing. Please refresh the page.");
+      return;
+    }
+
+    if (isDeleting) return;
+
+    setIsDeleting(true);
+
+    try {
+      // OFFLINE: Queue deletion and remove from local cache.
+      if (!navigator.onLine) {
+        await deleteOfflineCourse(userId, id);
+
+        // Remove from the individual courses cache.
+        queryClient.setQueryData(
+          ["courses", semesterId, userId],
+          (oldCourses = []) =>
+            oldCourses.filter((course) => course.id !== id)
+        );
+
+        // Also remove it from the complete nested levels cache.
+        queryClient.setQueryData(
+          ["levels", userId],
+          (oldData) => {
+            if (!oldData?.levels) return oldData;
+
+            return {
+              ...oldData,
+              levels: oldData.levels.map((level) => ({
+                ...level,
+                semesters: level.semesters?.map((semester) => ({
+                  ...semester,
+                  courses: (semester.courses || []).filter(
+                    (course) => course.id !== id
+                  ),
+                })),
+              })),
+            };
+          }
+        );
+
+        await refreshOfflineAcademicStats();
+
+        toast.success("Course deleted offline. Waiting to sync.");
+        return;
+      }
+
+      // ONLINE: Existing Supabase behavior.
+      await deleteCourse(id);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      await supabase.rpc("sync_carryovers", {
+        p_user_id: session.user.id,
+      });
+
+      await refreshAcademicData({
+        queryClient,
+        semesterId,
+        level,
+      });
+
+      toast.success("Course deleted successfully ✅");
+    } catch (err) {
+      toast.error(err?.message || "Failed to delete course");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -294,13 +408,7 @@ export default function Courses() {
                 <span className="text-center">{c.grade}</span>
                 <span className="flex justify-center gap-4">
                   <FaEdit
-                    onClick={() => {
-                      if (isOffline) {
-                        toast.error("You must be online to edit courses.");
-                        return;
-                      }
-                      openEditModal(c);
-                    }}
+                    onClick={() => openEditModal(c)}
                     className={`
                       transition
                       ${
@@ -312,13 +420,7 @@ export default function Courses() {
                   />
                 
                   <FaTrash
-                    onClick={() => {
-                      if (isOffline) {
-                        toast.error("You must be online to delete courses.");
-                        return;
-                      }
-                      deleteCourseHandler(c.id);
-                    }}
+                    onClick={() => deleteCourseHandler(c.id)}
                     className={`
                       transition
                       ${

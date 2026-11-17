@@ -1,6 +1,8 @@
+
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { enqueueAcademicMutation } from "../../services/academic";
 
 const AddLevelButton = ({
   levels = [],
@@ -40,15 +42,69 @@ const AddLevelButton = ({
   const lastLevelStats = lastLevel ? levelStats[lastLevel.id] : null;
   const canShowGraduated = isGraduated && lastLevelStats?.gpa > 0;
 
+  const updateGraduationStatus = async (graduated) => {
+    const payload = { graduated };
+
+    if (!navigator.onLine) {
+      await enqueueAcademicMutation(userId, {
+        type: "profile.update",
+        profileId: userId,
+        payload,
+      });
+
+      queryClient.setQueryData(
+        ["graduation-status", userId],
+        (old) => ({
+          ...(old || {}),
+          graduated,
+        })
+      );
+
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(payload)
+      .eq("id", userId);
+
+    if (error) throw error;
+
+    queryClient.setQueryData(
+      ["graduation-status", userId],
+      (old) => ({
+        ...(old || {}),
+        graduated,
+      })
+    );
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["graduation-status", userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["profile", userId],
+      }),
+    ]);
+  };
+
   const createLevel = async (levelValue) => {
     if (isAdding) return false;
 
     setIsAdding(true);
     setShowPrompt(false);
 
-    const optimisticLevel = {
-      id: crypto.randomUUID(),
+    const levelId = crypto.randomUUID();
+
+    const levelPayload = {
+      id: levelId,
+      user_id: userId,
       level: levelValue,
+      cgpa: 0,
+    };
+
+    const optimisticLevel = {
+      ...levelPayload,
       semesters: [],
       optimistic: true,
     };
@@ -64,7 +120,6 @@ const AddLevelButton = ({
       userId,
     };
 
-    // Optimistically add the new level while preserving the cache structure.
     queryClient.setQueryData(
       ["levels", userId],
       (old) => ({
@@ -77,19 +132,45 @@ const AddLevelButton = ({
     );
 
     try {
+      if (!navigator.onLine) {
+        await enqueueAcademicMutation(userId, {
+          type: "level.create",
+          levelId,
+          payload: levelPayload,
+        });
+
+        queryClient.setQueryData(
+          ["levels", userId],
+          (old) => ({
+            ...(old ?? fallbackData),
+            levels: (old?.levels ?? fallbackData.levels).map(
+              (level) =>
+                level.id === levelId
+                  ? {
+                      ...level,
+                      optimistic: false,
+                      _syncStatus: "pending",
+                    }
+                  : level
+            ),
+          })
+        );
+
+        showTempMessage(
+          `Level ${levelValue} saved offline. Waiting to sync.`
+        );
+
+        return true;
+      }
+
       const { data: realLevel, error } = await supabase
         .from("levels")
-        .insert({
-          user_id: userId,
-          level: levelValue,
-          cgpa: 0,
-        })
+        .upsert(levelPayload, { onConflict: "id" })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Replace the temporary level with the actual database record.
       queryClient.setQueryData(
         ["levels", userId],
         (old) => {
@@ -97,13 +178,13 @@ const AddLevelButton = ({
 
           return {
             ...current,
-            levels: current.levels.map((lvl) =>
-              lvl.id === optimisticLevel.id
+            levels: current.levels.map((level) =>
+              level.id === levelId
                 ? {
                     ...realLevel,
                     semesters: [],
                   }
-                : lvl
+                : level
             ),
           };
         }
@@ -127,7 +208,6 @@ const AddLevelButton = ({
     } catch (err) {
       console.error("Failed to add level:", err);
 
-      // Restore the original cache.
       queryClient.setQueryData(
         ["levels", userId],
         previousData
@@ -152,7 +232,11 @@ const AddLevelButton = ({
       return;
     }
 
-    if (!lastLevelStats || lastLevelStats.units === 0 || lastLevelStats.gpa <= 0) {
+    if (
+      !lastLevelStats ||
+      lastLevelStats.units === 0 ||
+      lastLevelStats.gpa <= 0
+    ) {
       showTempMessage(
         `Complete ${lastLevel.level} Level before adding another level.`,
         "error"
@@ -160,13 +244,11 @@ const AddLevelButton = ({
       return;
     }
 
-    // 🎯 From 300 and above → ALWAYS ask
     if (lastLevel.level >= 300) {
       setGraduatePrompt(true);
       return;
     }
 
-    // Normal flow (100 → 200 → 300)
     createLevel(lastLevel.level + 100);
   };
 
@@ -175,8 +257,11 @@ const AddLevelButton = ({
       {/* Message */}
       {message.text && (
         <div
-          className={`text-center py-4 font-semibold text-sm ${message.type === "error" ? "text-red-500" : "text-green-400"
-            }`}
+          className={`text-center py-4 font-semibold text-sm ${
+            message.type === "error"
+              ? "text-red-500"
+              : "text-green-400"
+          }`}
         >
           {message.text}
         </div>
@@ -218,47 +303,44 @@ const AddLevelButton = ({
             </h2>
 
             <div className="flex gap-4 justify-center">
-              {/* ✅ YES → graduate */}
               <button
                 disabled={isAdding}
                 onClick={async () => {
-                  const nextLevel = levels[levels.length - 1].level + 100;
+                  const nextLevel =
+                    levels[levels.length - 1].level + 100;
 
                   const created = await createLevel(nextLevel);
 
                   if (!created) return;
 
-                  const { error } = await supabase
-                    .from("profiles")
-                    .update({ graduated: true })
-                    .eq("id", userId);
+                  try {
+                    await updateGraduationStatus(true);
+                    showTempMessage(
+                      "Final year added successfully!"
+                    );
+                    setGraduatePrompt(false);
+                  } catch (error) {
+                    console.error(
+                      "Failed to update graduation status:",
+                      error
+                    );
 
-                  if (error) {
-                    console.error("Failed to update graduation status:", error);
-                    showTempMessage("Level added, but graduation status failed to update.", "error");
-                    return;
+                    showTempMessage(
+                      "Level added, but graduation status failed to update.",
+                      "error"
+                    );
                   }
-
-                  await queryClient.invalidateQueries({
-                    queryKey: ["graduation-status", userId],
-                  });
-
-                  await queryClient.invalidateQueries({
-                    queryKey: ["profile", userId],
-                  });
-
-                  setGraduatePrompt(false);
                 }}
                 className="cursor-pointer px-6 py-2 rounded-xl bg-[#199FB1] text-white font-semibold"
               >
                 Yes
               </button>
 
-              {/* ❌ NO → continue journey */}
               <button
                 disabled={isAdding}
                 onClick={() => {
-                  const nextLevel = levels[levels.length - 1].level + 100;
+                  const nextLevel =
+                    levels[levels.length - 1].level + 100;
 
                   createLevel(nextLevel);
                   setGraduatePrompt(false);
@@ -288,10 +370,11 @@ const AddLevelButton = ({
           disabled={isAdding}
           onClick={addLevel}
           className={`w-full flex items-center justify-center rounded-3xl border-2 dark:border-gray-700 border-dashed h-50 font-semibold transition
-          ${isAdding
+          ${
+            isAdding
               ? "cursor-not-allowed text-gray-500 border-gray-200 dark:border-gray-800"
               : "cursor-pointer text-gray-500 border-gray-300 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
-            }
+          }
         `}
         >
           {isAdding ? "Adding..." : "Add Level"}

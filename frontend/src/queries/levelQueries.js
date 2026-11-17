@@ -1,3 +1,4 @@
+
 import { supabase } from "../lib/supabaseClient";
 import { calculateLevelStats } from "../services/academic";
 
@@ -19,9 +20,14 @@ export async function getLevels() {
         id,
         semester,
         courses (
+          id,
+          semester_id,
           code,
           unit,
-          point
+          grade,
+          point,
+          is_carryover,
+          created_at
         )
       )
     `)

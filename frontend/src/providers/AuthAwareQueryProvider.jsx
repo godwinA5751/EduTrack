@@ -3,10 +3,13 @@ import { useEffect, useState } from "react";
 import {
   QueryClient,
   QueryClientProvider,
+  useQueryClient,
+  useIsRestoring,
 } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { supabase } from "../lib/supabaseClient";
 import { createUserPersister } from "../lib/queryPersister";
+import { syncOfflineCourses } from "../services/academic";
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
@@ -17,6 +20,33 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function OfflineCourseSync({ userId, children }) {
+  const queryClient = useQueryClient();
+  const isRestoring = useIsRestoring();
+
+  useEffect(() => {
+    if (!userId || isRestoring) return;
+
+    const sync = async () => {
+      try {
+        await syncOfflineCourses(userId, queryClient);
+      } catch (error) {
+        console.error("Offline course synchronization failed:", error);
+      }
+    };
+
+    sync();
+
+    window.addEventListener("online", sync);
+
+    return () => {
+      window.removeEventListener("online", sync);
+    };
+  }, [userId, isRestoring, queryClient]);
+
+  return children;
+}
 
 export default function AuthAwareQueryProvider({ children }) {
   const [userId, setUserId] = useState(null);
@@ -89,7 +119,9 @@ export default function AuthAwareQueryProvider({ children }) {
         },
       }}
     >
-      {children}
+      <OfflineCourseSync userId={userId}>
+        {children}
+      </OfflineCourseSync>
     </PersistQueryClientProvider>
   );
 }
