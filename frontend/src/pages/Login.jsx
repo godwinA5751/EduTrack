@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
-import { supabase } from "../lib/supabaseClient";
+import {
+  supabase,
+  setRememberMePreference,
+} from "../lib/supabaseClient";
 import { useQueryClient } from "@tanstack/react-query";
 
 const matricToEmail = (matricNo) =>
@@ -14,6 +17,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [form, setForm] = useState({
     matricNo: "",
@@ -40,6 +44,7 @@ export default function Login() {
       const matricNo = form.matricNo.trim().toUpperCase();
       const email = matricToEmail(matricNo);
       setLoading(true);
+      setRememberMePreference(rememberMe);
 
       // 2️⃣ Login with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -159,6 +164,28 @@ export default function Login() {
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
         </div>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="
+              appearance-none w-4.5 h-4.5 rounded-full
+              border-2 border-gray-500 dark:border-white/70
+              bg-transparent
+              checked:bg-[#0D5C75] checked:border-[#0D5C75]
+              checked:after:content-['✓']
+              checked:after:flex checked:after:items-center
+              checked:after:justify-center checked:after:text-white
+              checked:after:text-xs
+              cursor-pointer transition-all
+            "
+          />
+          <span className="text-gray-700 dark:text-white/90">
+            Remember me
+          </span>
+        </label>
 
         <Button
           disabled={loading}

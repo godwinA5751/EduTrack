@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-// import { useQueryClient } from "@tanstack/react-query";
 import {
   FaHome,
   FaLayerGroup,
@@ -9,12 +8,13 @@ import {
   FaLock,
   FaUserShield,
 } from "react-icons/fa";
-import { supabase } from "../../lib/supabaseClient";
-// import { createUserPersister } from "../../lib/queryPersister";
+import { clearLocalAuthSession, supabase } from "../../lib/supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
+import { createUserPersister } from "../../lib/queryPersister";
 
 export default function Sidebar({ icon, name, role }) {
-  // const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
@@ -40,13 +40,39 @@ export default function Sidebar({ icon, name, role }) {
       : []),
   
     { name: "Change Password", icon: <FaLock />, href: "/change-password" },
-  
     {
       name: "Logout",
       icon: <FaTimes />,
       href: "/login",
       action: async () => {
         try {
+          if (!navigator.onLine) {
+            const {
+              data: { session },
+              error,
+            } = await supabase.auth.getSession();
+
+            if (error) throw error;
+
+            const userId = session?.user?.id;
+
+            // Clear in-memory academic data
+            queryClient.clear();
+
+            // Remove this user's persisted academic-data cache
+            if (userId) {
+              await createUserPersister(userId).removeClient();
+            }
+
+            // Remove the local authentication session
+            clearLocalAuthSession();
+
+            // Reload so Supabase initializes without the old session
+            window.location.replace("/login");
+
+            return;
+          }
+
           const { error } = await supabase.auth.signOut();
 
           if (error) throw error;
@@ -110,10 +136,10 @@ export default function Sidebar({ icon, name, role }) {
 
                   <NavLink
                     to={item.href}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       if (item.action) {
-                        e.preventDefault(); // prevent default navigation
-                        item.action();
+                        e.preventDefault();
+                        await item.action();
                       }
                     }}
                     className={`
