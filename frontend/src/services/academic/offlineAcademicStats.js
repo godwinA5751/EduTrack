@@ -98,21 +98,7 @@ export async function recalculateOfflineAcademicStats({
   if (!Array.isArray(cachedData?.levels)) return;
 
   const mutations = await getPendingMutations(userId);
-  console.log("OFFLINE DEBUG:", {
-    mutations,
-    cachedCourses: cachedData.levels.flatMap((level) =>
-      (level.semesters || []).flatMap((semester) =>
-        (semester.courses || []).map((course) => ({
-          id: course.id,
-          code: course.code,
-          unit: course.unit,
-          grade: course.grade,
-          point: course.point,
-        }))
-      )
-    ),
-  });
-
+  
   const calculatedLevels = applyPendingCourseMutations(
     cachedData.levels,
     mutations

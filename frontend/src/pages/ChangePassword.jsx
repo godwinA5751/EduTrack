@@ -18,7 +18,6 @@ export default function ChangePassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     
     if (!password || !confirm) {
       return setMessage({ text: "Please fill all fields", type: "error" });
@@ -36,6 +35,7 @@ export default function ChangePassword() {
       });
     }
 
+    setLoading(true);
     try {
       // 1 Update password
       const { error } = await supabase.auth.updateUser({ password });
@@ -75,8 +75,10 @@ export default function ChangePassword() {
       toast.success("Password updated successfully.");
       
       navigate("/dashboard", { replace: true });
-    } catch (err) {
-      if (err) toast.error("Failed to update password");
+    } catch {
+      toast.error("Failed to update password");
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { useEffect, lazy, Suspense } from "react";
 import { useSystemTheme } from "./hooks/useSystemTheme";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AppLoader from "./components/ui/AppLoader";
 
 // Lazy-loaded pages
 const Landing = lazy(() => import("./pages/Landing"));
@@ -28,7 +29,7 @@ function App() {
   }, [isDark]);
 
   return (
-    <Suspense fallback={<div className="text-white text-center mt-20">Loading...</div>}>
+    <Suspense fallback={<AppLoader />}>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/register" element={<Register />} />

@@ -22,6 +22,7 @@ export default function Login() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setMessage({ text: "", type: "" });
   };
 
   const handleSubmit = async (e) => {
@@ -47,7 +48,14 @@ export default function Login() {
       });
 
       if (error) {
-        setMessage({ text: "Invalid matric number or password", type: "error" });
+        setMessage({
+          text:
+            error.code === "invalid_credentials" ||
+            error.message === "Invalid login credentials"
+              ? "Incorrect matric number or password."
+              : "Unable to log in. Please try again.",
+          type: "error",
+        });
         return;
       }
 
@@ -60,8 +68,13 @@ export default function Login() {
         .eq("id", userId)
         .single();
       
-      if (profileError) {
-        setMessage({ text: "Profile not found", type: "error" });
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+
+        setMessage({
+          text: "We couldn't load your account profile. Please try again.",
+          type: "error",
+        });
         return;
       }
       
@@ -74,8 +87,11 @@ export default function Login() {
           ? "/change-password"
           : "/dashboard"
       );
-    } catch (err) {
-      setMessage({ text: `${err}Something went wrong`, type: "error" });
+    } catch {
+      setMessage({
+        text: "Unable to connect. Please check your internet connection and try again.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }

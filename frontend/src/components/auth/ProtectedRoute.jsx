@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { getCurrentUser } from "../../queries/userQueries";
 import { useIsRestoring, useQuery } from "@tanstack/react-query";
+import AppLoader from "../ui/AppLoader";
 
 export default function ProtectedRoute({ children }) {
   const location = useLocation();
@@ -19,25 +20,18 @@ export default function ProtectedRoute({ children }) {
   });
 
   if (isRestoring) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading EduTrack...
-      </div>
-    );
+    return <AppLoader />;
   }
 
   if (isPending && !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        {isPaused ? (
-          <p>
-            You're offline. Connect to the internet to sign in or load your
-            academic data for the first time.
-          </p>
-        ) : (
-          <p>Loading...</p>
-        )}
-      </div>
+      <AppLoader
+        message={
+          isPaused
+            ? "You're offline. Connect to the internet to sign in or load your academic data for the first time."
+            : "Loading EduTrack..."
+        }
+      />
     );
   }
 

@@ -3,13 +3,12 @@ import { useEffect, useState } from "react";
 import {
   QueryClient,
   QueryClientProvider,
-  useQueryClient,
-  useIsRestoring,
 } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { supabase } from "../lib/supabaseClient";
 import { createUserPersister } from "../lib/queryPersister";
-import { syncOfflineCourses } from "../services/academic";
+import AppLoader from "../components/ui/AppLoader";
+import OfflineCacheInitializer from "../components/auth/OfflineCacheInitializer";
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
 
@@ -20,33 +19,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function OfflineCourseSync({ userId, children }) {
-  const queryClient = useQueryClient();
-  const isRestoring = useIsRestoring();
-
-  useEffect(() => {
-    if (!userId || isRestoring) return;
-
-    const sync = async () => {
-      try {
-        await syncOfflineCourses(userId, queryClient);
-      } catch (error) {
-        console.error("Offline course synchronization failed:", error);
-      }
-    };
-
-    sync();
-
-    window.addEventListener("online", sync);
-
-    return () => {
-      window.removeEventListener("online", sync);
-    };
-  }, [userId, isRestoring, queryClient]);
-
-  return children;
-}
 
 export default function AuthAwareQueryProvider({ children }) {
   const [userId, setUserId] = useState(null);
@@ -66,9 +38,7 @@ export default function AuthAwareQueryProvider({ children }) {
         if (previousUserId) {
           createUserPersister(previousUserId)
             .removeClient()
-            .catch((error) => {
-              console.error("Failed to clear previous user cache:", error);
-            });
+            .catch(() => undefined);
         }
 
         previousUserId = nextUserId;
@@ -82,11 +52,7 @@ export default function AuthAwareQueryProvider({ children }) {
   }, []);
 
   if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading EduTrack...
-      </div>
-    );
+    return <AppLoader />;
   }
 
   // Guests should not have a persisted academic-data cache.
@@ -119,9 +85,9 @@ export default function AuthAwareQueryProvider({ children }) {
         },
       }}
     >
-      <OfflineCourseSync userId={userId}>
+      <OfflineCacheInitializer userId={userId}>
         {children}
-      </OfflineCourseSync>
+      </OfflineCacheInitializer>
     </PersistQueryClientProvider>
   );
 }

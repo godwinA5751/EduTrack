@@ -143,8 +143,7 @@ export default function Levels() {
 
       setShowDeleteModal(false);
       setSelectedLevel(null);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to delete level");
     } finally {
       setIsDeleting(false);

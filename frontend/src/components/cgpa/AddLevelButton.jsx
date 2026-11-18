@@ -205,9 +205,7 @@ const AddLevelButton = ({
       showTempMessage(`Level ${levelValue} added successfully!`);
 
       return true;
-    } catch (err) {
-      console.error("Failed to add level:", err);
-
+    } catch {
       queryClient.setQueryData(
         ["levels", userId],
         previousData
@@ -319,12 +317,7 @@ const AddLevelButton = ({
                       "Final year added successfully!"
                     );
                     setGraduatePrompt(false);
-                  } catch (error) {
-                    console.error(
-                      "Failed to update graduation status:",
-                      error
-                    );
-
+                  } catch {
                     showTempMessage(
                       "Level added, but graduation status failed to update.",
                       "error"

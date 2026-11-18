@@ -47,9 +47,11 @@ export default function Semester() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["semesters", levelNumber, userId],
+
+    // Allow the local cache fallback to execute offline.
+    networkMode: "always",
+
     queryFn: async () => {
-      // When offline, read the level and its semesters
-      // from the persisted levels cache.
       if (!navigator.onLine) {
         const cachedLevels = queryClient.getQueryData([
           "levels",
@@ -72,6 +74,7 @@ export default function Semester() {
 
       return getSemesters(levelNumber);
     },
+
     enabled: levelNumber !== null && Boolean(userId),
     staleTime: 10 * 60 * 1000,
     gcTime: 7 * 24 * 60 * 60 * 1000,
@@ -195,8 +198,7 @@ export default function Semester() {
       });
 
       setMessage(`Semester ${nextSemester} added`);
-    } catch (error) {
-      console.error("Failed to add semester:", error);
+    } catch {
       setMessage("Failed to add semester");
     } finally {
       setIsAdding(false);
@@ -291,8 +293,7 @@ export default function Semester() {
 
       setShowDeleteModal(false);
       setSelectedSemester(null);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to delete semester");
     } finally {
       setIsDeleting(false);

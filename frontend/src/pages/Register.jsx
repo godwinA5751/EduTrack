@@ -23,72 +23,91 @@ export default function Register() {
   // Handle input change
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setMessage({ text: "", type: "" });
   };
 
   // Handle form submit
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ text: "", type: "" });
 
-    if (!form.fullName || !form.matricNo || !form.password) {
+    const fullName = form.fullName.trim();
+    const matricNo = form.matricNo.trim().toUpperCase();
+
+    if (!fullName || !matricNo || !form.password) {
       setMessage({ text: "Please fill all fields", type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}$/;
+
     if (!passwordRegex.test(form.password)) {
       setMessage({
         text: "Password must be 6–12 characters with letters & numbers",
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
       return;
     }
 
-    // ✅ NORMALIZE matric number HERE
-    const matricNo = form.matricNo.trim().toUpperCase();
-    const email = matricToEmail(matricNo);
     setLoading(true);
 
-    // 1️⃣ Create auth user
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: form.password,
-    });
+    try {
+      const email = matricToEmail(matricNo);
 
-    if (error) {
-      setMessage({ text: error.message, type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-      return;
-    }
-
-    const userId = data.user.id;
-
-    // 2️⃣ Create profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        id: userId,
-        full_name: form.fullName,
-        matric_no: matricNo,
+      // Create Auth user and pass profile information as metadata
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: form.password,
+        options: {
+          data: {
+            full_name: fullName,
+            matric_no: matricNo,
+          },
+        },
       });
 
-    if (profileError) {
-      setMessage({ text: profileError.message, type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
-      return;
+      if (error) {
+        setMessage({
+          text: error.message,
+          type: "error",
+        });
+        return;
+      }
+
+      if (!data.user) {
+        setMessage({
+          text: "Registration could not be completed. Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Sign out after successful registration
+      const { error: signOutError } = await supabase.auth.signOut();
+
+      if (signOutError) {
+        setMessage({
+          text: "Registration succeeded, but automatic sign-out failed. Please log out before continuing.",
+          type: "error",
+        });
+        return;
+      }
+
+      setMessage({
+        text: "Registration successful 🎉 Redirecting...",
+        type: "success",
+      });
+
+      setTimeout(() => navigate("/login"), 1500);
+    } catch {
+      setMessage({
+        text: "Unable to connect. Please check your internet connection and try again.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    await supabase.auth.signOut();
-
-    setLoading(false);
-    setMessage({
-      text: "Registration successful 🎉 Redirecting...",
-      type: "success",
-    });
-
-    setTimeout(() => navigate("/login"), 1500);
   };
 
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}$/;

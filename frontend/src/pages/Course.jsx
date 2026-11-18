@@ -18,7 +18,6 @@ import {
   updateOfflineCourse,
   deleteOfflineCourse,
   recalculateOfflineAcademicStats,
-  getPendingMutations 
 } from "../services/academic";
 import EditCourseModal from "../components/cgpa/EditCourseModal";
 import { getCurrentUser } from "../queries/userQueries";
@@ -70,11 +69,8 @@ export default function Courses() {
         userId,
         queryClient,
       });
-    } catch (error) {
-      console.error(
-        "Offline academic statistics recalculation failed:",
-        error
-      );
+    } catch {
+      return;
     }
   };
 
@@ -223,10 +219,6 @@ export default function Courses() {
           userId,
           selectedCourse.id,
           editForm
-        );
-        console.log(
-          "Queue after edit:",
-          await getPendingMutations(userId)
         );
 
         queryClient.setQueryData(

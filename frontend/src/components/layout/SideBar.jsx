@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+// import { useQueryClient } from "@tanstack/react-query";
 import {
   FaHome,
   FaLayerGroup,
@@ -10,10 +10,10 @@ import {
   FaUserShield,
 } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
-import { createUserPersister } from "../../lib/queryPersister";
+// import { createUserPersister } from "../../lib/queryPersister";
 
 export default function Sidebar({ icon, name, role }) {
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -46,22 +46,17 @@ export default function Sidebar({ icon, name, role }) {
       icon: <FaTimes />,
       href: "/login",
       action: async () => {
-        const userId = queryClient.getQueryData(["current-user"])?.id;
-
         try {
-          if (userId) {
-            await createUserPersister(userId).removeClient();
-          }
-        } catch (error) {
-          console.error("Failed to remove persisted user cache:", error);
+          const { error } = await supabase.auth.signOut();
+
+          if (error) throw error;
+
+          navigate("/login", { replace: true });
+        } catch {
+          return;
         }
-
-        await supabase.auth.signOut();
-
-        queryClient.clear();
-        navigate("/login", { replace: true });
       },
-    },
+    }
   ];
 
   return (
