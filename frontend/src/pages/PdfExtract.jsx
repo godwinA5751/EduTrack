@@ -10,7 +10,6 @@ import {
 import { getExistingAcademicRecords } from "../queries/importQueries";
 import { importPdfCourses } from "../services/academic/pdfImportService";
 import { refreshAcademicData } from "../services/academic/refreshAcademicData";
-import Header from "../components/layout/Header";
 
 const GRADE_POINTS = {
   A: 5,
@@ -28,12 +27,6 @@ const inputClass =
 
 const panelClass =
   "rounded-3xl border border-white/50 bg-white/75 p-5 shadow-xl shadow-[#0D5C75]/10 backdrop-blur-xl dark:border-white/10 dark:bg-[#0B2732]/75 sm:p-7";
-
-// const primaryText =
-//   "text-gray-800 dark:text-gray-100";
-
-// const secondaryText =
-//   "text-gray-600 dark:text-gray-300";
 
 const mutedText =
   "text-gray-500 dark:text-gray-400";
@@ -165,7 +158,6 @@ function PdfExtract() {
   const [imported, setImported] = useState(false);
   const [success, setSuccess] = useState("");
   const [refreshWarning, setRefreshWarning] = useState("");
-  const [debugPdfText, setDebugPdfText] = useState("");
 
   const reviewedCourses = useMemo(
     () => validateCourses(courses, existingRecords),
@@ -257,16 +249,6 @@ function PdfExtract() {
       setShowImportConfirmation(false);
 
       const pdfData = await extractPdfText(selectedFile);
-
-      setDebugPdfText(
-        pdfData.pages
-          .map((page) =>
-            page.items
-              .map((item) => `${item.text} [x:${item.x}, y:${item.y}]`)
-              .join("\n")
-          )
-          .join("\n\n")
-      );
       const parsedData = parsePdfResult(pdfData);
 
       const records = await getExistingAcademicRecords(LEVELS);
@@ -383,19 +365,12 @@ function PdfExtract() {
           queryClient,
           level: Number(level),
         });
-      } catch (refreshError) {
-        console.error(
-          "Academic data refresh failed after successful import:",
-          refreshError
-        );
-
+      } catch {
         setRefreshWarning(
           "Your courses were imported successfully, but academic statistics could not be refreshed. Please reload the page to update them."
         );
       }
     } catch (err) {
-      console.error("PDF import failed:", err);
-
       setError(
         err.message || "Failed to import courses. Please try again."
       );
@@ -1098,28 +1073,6 @@ function PdfExtract() {
               )}
             </section>
           </>
-        )}
-        {debugPdfText && (
-          <div className="mt-6 rounded-xl bg-white p-4 text-gray-900">
-            <h3 className="mb-3 font-bold">
-              PDF Extraction Debug
-            </h3>
-
-            <textarea
-              readOnly
-              value={debugPdfText}
-              className="h-80 w-full rounded-lg border p-3 text-xs"
-            />
-
-            <button
-              onClick={() =>
-                navigator.clipboard.writeText(debugPdfText)
-              }
-              className="mt-3 rounded-lg bg-cyan-700 px-4 py-2 text-white"
-            >
-              Copy Extracted Data
-            </button>
-          </div>
         )}
       </div>
     </div>
