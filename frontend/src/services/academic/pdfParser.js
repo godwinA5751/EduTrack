@@ -1,6 +1,5 @@
 
-const COURSE_START_REGEX =
-  /(?:^|\s)([A-Z]{3}\s?\d{3})\.?(?=\s|$)/gi;
+const COURSE_CODE_REGEX = /^([A-Z]{3}\s?\d{3})\.?$/i;
 
 const SEMESTER_REGEX =
   /(\d{3})\s*\/\s*(FIRST|SECOND)/i;
@@ -18,7 +17,10 @@ const GRADE_POINTS = {
 };
 
 function normalizeCourseCode(code) {
-  return code.replace(/\s+/g, "").toUpperCase();
+  return code
+    .replace(/\s+/g, "")
+    .replace(/\.$/, "")
+    .toUpperCase();
 }
 
 function getOriginalPdfText(pages) {
@@ -30,11 +32,11 @@ function getOriginalPdfText(pages) {
 }
 
 function extractCourseBlocks(text) {
-  const matches = [...text.matchAll(COURSE_START_REGEX)];
+  const regex = /(?:^|\s)([A-Z]{3}\s?\d{3})\.?(?=\s|$)/gi;
+  const matches = [...text.matchAll(regex)];
 
   return matches.map((match, index) => {
     const start = match.index + match[0].indexOf(match[1]);
-
     const nextMatch = matches[index + 1];
 
     const end = nextMatch
@@ -48,13 +50,157 @@ function extractCourseBlocks(text) {
   });
 }
 
+// Find column positions using the PDF table headers.
+function getColumnPositions(items) {
+  const findHeader = (name, fallback) => {
+    const header = items.find(
+      (item) =>
+        item.text.trim().toUpperCase() === name
+    );
+
+    return header?.x ?? fallback;
+  };
+
+  return {
+    semester: findHeader("SESSION", 268.778),
+    unit: findHeader("UNIT", 437.272),
+    grade: findHeader("GRADE", 475.32),
+  };
+}
+
+// Find the closest matching item within a column and course row.
+function findColumnValue(
+  items,
+  targetX,
+  rowY,
+  xTolerance,
+  yTolerance,
+  validator
+) {
+  const candidates = items
+    .filter((item) => {
+      const text = item.text.trim();
+
+      return (
+        Math.abs(item.x - targetX) <= xTolerance &&
+        Math.abs(item.y - rowY) <= yTolerance &&
+        validator(text)
+      );
+    })
+    .sort((a, b) => {
+      const distanceA =
+        Math.abs(a.y - rowY) * 2 +
+        Math.abs(a.x - targetX);
+
+      const distanceB =
+        Math.abs(b.y - rowY) * 2 +
+        Math.abs(b.x - targetX);
+
+      return distanceA - distanceB;
+    });
+
+  return candidates[0]?.text.trim() ?? null;
+}
+
+// Extract courses using their PDF coordinates.
+function extractCoordinateCourseBlocks(pages) {
+  const blocks = [];
+
+  pages.forEach((page) => {
+    const items = page.items.filter(
+      (item) =>
+        typeof item.x === "number" &&
+        typeof item.y === "number" &&
+        typeof item.text === "string" &&
+        item.text.trim()
+    );
+
+    const columnPositions = getColumnPositions(items);
+
+    const courseStarts = items
+      .map((item) => {
+        const match = item.text.trim().match(COURSE_CODE_REGEX);
+
+        if (!match) return null;
+
+        return {
+          code: normalizeCourseCode(match[1]),
+          y: item.y,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.y - a.y);
+
+    courseStarts.forEach((course) => {
+      // Collect the text belonging to this course row.
+      // The tolerance also accommodates the semester line
+      // and wrapped course titles.
+      const rowItems = items.filter(
+        (item) => Math.abs(item.y - course.y) <= 9.5
+      );
+
+      const semesterText = findColumnValue(
+        rowItems,
+        columnPositions.semester,
+        course.y,
+        35,
+        9.5,
+        (text) => SEMESTER_REGEX.test(text)
+      );
+
+      const unitText = findColumnValue(
+        rowItems,
+        columnPositions.unit,
+        course.y,
+        25,
+        5,
+        (text) => /^\d+$/.test(text)
+      );
+
+      const gradeText = findColumnValue(
+        rowItems,
+        columnPositions.grade,
+        course.y,
+        25,
+        5,
+        (text) => /^[A-F]$/i.test(text)
+      );
+
+      const rawText = rowItems
+        .slice()
+        .sort((a, b) => b.y - a.y || a.x - b.x)
+        .map((item) => item.text.trim())
+        .join(" ");
+
+      blocks.push({
+        code: course.code,
+        rawText,
+        semesterText,
+        unitText,
+        gradeText,
+      });
+    });
+  });
+
+  return blocks;
+}
+
 function parseCourseBlock(block) {
-  const { code, rawText } = block;
+  const {
+    code,
+    rawText,
+    semesterText,
+    unitText,
+    gradeText,
+  } = block;
 
-  const semesterMatch = rawText.match(SEMESTER_REGEX);
+  const semesterMatch = (
+    semesterText ?? rawText
+  ).match(SEMESTER_REGEX);
+
+  // Coordinate-based extraction is preferred.
+  // The original regex remains available as a fallback.
   const resultMatch = rawText.match(COURSE_RESULT_REGEX);
-
-  const issues = [];
 
   const level = semesterMatch
     ? Number(semesterMatch[1])
@@ -66,13 +212,21 @@ function parseCourseBlock(block) {
       : 2
     : null;
 
-  const unit = resultMatch
-    ? Number(resultMatch[4])
-    : null;
+  const unit = unitText !== undefined
+    ? unitText !== null
+      ? Number(unitText)
+      : null
+    : resultMatch
+      ? Number(resultMatch[4])
+      : null;
 
-  const grade = resultMatch
-    ? resultMatch[6].toUpperCase()
-    : null;
+  const grade = gradeText !== undefined
+    ? gradeText?.toUpperCase() ?? null
+    : resultMatch
+      ? resultMatch[6].toUpperCase()
+      : null;
+
+  const issues = [];
 
   if (!/^[A-Z]{3}\d{3}$/.test(code)) {
     issues.push("Invalid course code.");
@@ -84,7 +238,10 @@ function parseCourseBlock(block) {
     );
   }
 
-  if (!resultMatch) {
+  if (
+    (unitText === undefined && !resultMatch) ||
+    (unitText !== undefined && unitText === null)
+  ) {
     issues.push(
       "Could not extract the complete course result. Please check the course details manually."
     );
@@ -133,7 +290,13 @@ export function parsePdfResult(extractedPdf) {
     );
   }
 
-  const blocks = extractCourseBlocks(text);
+  // Prefer coordinate-based parsing when available.
+  const coordinateBlocks =
+    extractCoordinateCourseBlocks(extractedPdf.pages);
+
+  const blocks = coordinateBlocks.length
+    ? coordinateBlocks
+    : extractCourseBlocks(text);
 
   if (!blocks.length) {
     throw new Error(
@@ -141,9 +304,7 @@ export function parsePdfResult(extractedPdf) {
     );
   }
 
-  const courses = blocks.map((block) =>
-    parseCourseBlock(block)
-  );
+  const courses = blocks.map(parseCourseBlock);
 
   // Detect duplicate course codes within the same level and semester.
   const seenCourses = new Map();
@@ -230,9 +391,6 @@ export function parsePdfResult(extractedPdf) {
     ),
 
     invalidCount,
-
-    // The PDF's original level does not need to match
-    // the destination level selected in EduTrack.
     hasLevelMismatch: false,
 
     canImport:
