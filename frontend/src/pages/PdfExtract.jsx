@@ -165,6 +165,7 @@ function PdfExtract() {
   const [imported, setImported] = useState(false);
   const [success, setSuccess] = useState("");
   const [refreshWarning, setRefreshWarning] = useState("");
+  const [debugPdfText, setDebugPdfText] = useState("");
 
   const reviewedCourses = useMemo(
     () => validateCourses(courses, existingRecords),
@@ -256,6 +257,16 @@ function PdfExtract() {
       setShowImportConfirmation(false);
 
       const pdfData = await extractPdfText(selectedFile);
+
+      setDebugPdfText(
+        pdfData.pages
+          .map((page) =>
+            page.items
+              .map((item) => `${item.text} [x:${item.x}, y:${item.y}]`)
+              .join("\n")
+          )
+          .join("\n\n")
+      );
       const parsedData = parsePdfResult(pdfData);
 
       const records = await getExistingAcademicRecords(LEVELS);
@@ -1087,6 +1098,28 @@ function PdfExtract() {
               )}
             </section>
           </>
+        )}
+        {debugPdfText && (
+          <div className="mt-6 rounded-xl bg-white p-4 text-gray-900">
+            <h3 className="mb-3 font-bold">
+              PDF Extraction Debug
+            </h3>
+
+            <textarea
+              readOnly
+              value={debugPdfText}
+              className="h-80 w-full rounded-lg border p-3 text-xs"
+            />
+
+            <button
+              onClick={() =>
+                navigator.clipboard.writeText(debugPdfText)
+              }
+              className="mt-3 rounded-lg bg-cyan-700 px-4 py-2 text-white"
+            >
+              Copy Extracted Data
+            </button>
+          </div>
         )}
       </div>
     </div>
