@@ -15,6 +15,7 @@ const Semester = lazy(() => import("./pages/Semester"));
 const Course = lazy(() => import("./pages/Course"));
 const Admin = lazy(() => import("./pages/Admin"));
 const ChangePassword = lazy(() => import("./pages/ChangePassword"));
+const PdfExtract = lazy(() => import("./pages/PdfExtract"));
 
 function App() {
   const isDark = useSystemTheme();
@@ -98,6 +99,15 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/pdf-extract"
+          element={
+            <ProtectedRoute>
+              <PdfExtract />
+            </ProtectedRoute>
+          }
+/>
       </Routes>
     </Suspense>
   );

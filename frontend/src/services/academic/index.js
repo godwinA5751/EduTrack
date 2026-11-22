@@ -12,3 +12,5 @@ export * from "./offlineQueue";
 export * from "./offlineCourseService";
 export * from "./syncOfflineCourses";
 export * from "./offlineAcademicStats";
+export * from "./pdfExtractor";
+export * from "./pdfParser";

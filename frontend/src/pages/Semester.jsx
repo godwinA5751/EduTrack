@@ -325,6 +325,18 @@ export default function Semester() {
         <SemesterSkeleton />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-32">
+        <button
+          type="button"
+          onClick={() => navigate(`/pdf-extract?level=${levelNumber}`)}
+          className="flex h-40 flex-col items-center justify-center gap-2 rounded-3xl border border-white/50 bg-white/20 p-6 text-white shadow-lg backdrop-blur-md transition hover:scale-105 hover:bg-white/30 dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/15 cursor-pointer"
+        >
+          <span className="text-3xl">📄</span>
+          <span className="font-bold">Upload Result</span>
+          <span className="text-center text-xs text-white/80">
+            Import a downloaded result PDF
+          </span>
+        </button>
+
           {semesters.map((sem) => {
             const stats = semesterStats[sem.id];
 
