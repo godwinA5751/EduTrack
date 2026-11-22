@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/ui/Button";
 import { supabase } from "../lib/supabaseClient";
@@ -7,6 +7,7 @@ import AppLoader from "../components/ui/AppLoader";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -17,12 +18,19 @@ export default function Landing() {
           data: { session },
         } = await supabase.auth.getSession();
 
-        if (mounted && session) {
+        if (!mounted) return;
+
+        if (session) {
           navigate("/dashboard", { replace: true });
+          return;
         }
       } catch {
-        // Keep the landing page available if session
+        // Allow access to the landing page if session
         // verification fails.
+      } finally {
+        if (mounted) {
+          setCheckingSession(false);
+        }
       }
     };
 
@@ -32,6 +40,10 @@ export default function Landing() {
       mounted = false;
     };
   }, [navigate]);
+
+  if (checkingSession) {
+    return <AppLoader />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center
